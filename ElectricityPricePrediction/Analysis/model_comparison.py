@@ -8,6 +8,12 @@ import argparse
 import subprocess
 import warnings
 import traceback
+import random
+
+# Set random seeds for reproducibility
+SEED = 42
+np.random.seed(SEED)
+random.seed(SEED)
 
 # Add project root to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -25,6 +31,12 @@ try:
 except ImportError:
     tensorflow_available = False
     print("TensorFlow not available. LSTM model will be skipped.")
+
+if tensorflow_available:
+    try:
+        tf.random.set_seed(SEED)
+    except Exception as e:
+        print(f"Could not set TensorFlow seed: {e}")
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -191,8 +203,8 @@ def main():
             lstm.preprocess()
             
             # Train
-            print("Training LSTM (epochs=5)...")
-            lstm.train(epochs=5, batch_size=32) 
+            print("Training LSTM (epochs=50)... This may take a while.")
+            lstm.train(epochs=50, batch_size=32) 
             
             # Predict
             window_size = lstm.window_size
@@ -272,6 +284,9 @@ def main():
     
     if 'Naive_24h' in subset.columns:
         plt.plot(subset.index, subset['Naive_24h'], label='Naive 24h', linestyle='--')
+
+    if 'Naive_7d' in subset.columns:
+        plt.plot(subset.index, subset['Naive_7d'], label='Naive 7d', linestyle=':', alpha=0.8)
     
     if 'XGBoost' in subset.columns:
         plt.plot(subset.index, subset['XGBoost'], label='XGBoost')

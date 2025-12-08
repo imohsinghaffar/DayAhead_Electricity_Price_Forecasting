@@ -17,6 +17,6 @@ XGBoost:
   MAPE: 74.29%
 
 LSTM:
-  RMSE: 8.75
-  MAE:  6.21
-  MAPE: 100.88%
+  RMSE: 9.06
+  MAE:  6.60
+  MAPE: 105.87%
