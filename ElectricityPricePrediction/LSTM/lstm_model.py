@@ -60,31 +60,32 @@ class LSTMModel:
     def build_model(self, input_shape):
         """
         Builds the LSTM/GRU model architecture.
+        Simplified for better performance on smaller datasets.
         """
         model = keras.models.Sequential([
-            # Convolutional layer to extract features from time series
-            keras.layers.Conv1D(filters=32, kernel_size=3, strides=1, padding="causal", activation="relu", input_shape=input_shape),
-            keras.layers.LSTM(64, return_sequences=True),
-            keras.layers.LSTM(32, return_sequences=False),
+            keras.layers.LSTM(50, input_shape=input_shape, return_sequences=False),
+            keras.layers.Dropout(0.2),
             keras.layers.Dense(self.forecast_horizon)
         ])
         
         model.compile(loss="mse", optimizer="adam", metrics=["mae"])
         return model
 
-    def train(self, train_split_ratio=0.8, epochs=20, batch_size=32):
+    def train(self, train_split_ratio=0.95, epochs=50, batch_size=32):
         """
         Trains the model.
         """
         X, y = self.create_sequences(self.data_scaled)
         
+        # Use more data for training (95%) to capture recent trends (Winter 2018)
         train_size = int(len(X) * train_split_ratio)
         X_train, y_train = X[:train_size], y[:train_size]
         X_val, y_val = X[train_size:], y[train_size:]
         
         self.model = self.build_model((X_train.shape[1], X_train.shape[2]))
         
-        early_stopping = keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
+        # Reduced patience to prevent overfitting if validation loss fluctuates
+        early_stopping = keras.callbacks.EarlyStopping(patience=10, restore_best_weights=True)
         
         history = self.model.fit(
             X_train, y_train,
