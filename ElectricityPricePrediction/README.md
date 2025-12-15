@@ -1,106 +1,92 @@
 # Day Ahead Electricity Price Prediction
-This project is the final project following the Data Science track at Flatiron School.
 
-#### -- Project Status: [Completed]
+This project aims to predict the price of electricity in day-ahead markets 24 hours in advance using various machine learning models.
 
-## Project Intro/Objective
-The purpose of this project was to predict the price of electricity in the day head markets, 24 hours in advance.
+#### Project Status: [Completed/Refactored]
 
-Effectively predicting the price of electricity has many useful applications: 
- * It can be used to optimize electricity storage.
- * It enables demand side flexibility of buildings, allowing them to reduce consumption in expensive times
-   (and potentially increase during cheap/negative price periods) and earn additional revenue from otherwise sunk costs.
- * The correlation between electricity price and carbon intensity of generation means that acting on price changes also leads
-   to carbon savings.
-   
+## Project Structure
 
-### Methods Used
-* Inferential Statistics
-* Machine Learning (Random Forests, XGBoost, ARIMA)
-* Deep Learning (Neural Networks)
-* Data Visualization
-* Data Cleaning and Wrangling
-* Predictive Modeling
+The project is organized into modular components for easier navigation and reproducibility:
 
-### Technologies
-* Python
-* Pandas, Numpy, jupyter
-* Google Collab, Google Cloud
-* Keras, Tensorflow
-* Scikit Learn
-* Time-Series Analysis
+```
+ElectricityPricePrediction/
+├── run_forecast.py           # Main entry point to run the pipeline
+├── README.md                 # Project documentation
+├── requirements.txt          # Python dependencies
+├── data/                     # Dataset directory
+├── utils/
+│   └── data_loader.py        # Data loading and feature engineering (Cyclical features)
+├── Naive/
+│   ├── naive_baselines.py    # Naive baseline models (24h, 7d persistence)
+│   └── ...                   # Original notebooks
+├── XGBoost/
+│   ├── xgboost_model.py      # XGBoost implementation
+│   └── ...                   # Original notebooks
+├── LSTM/
+│   ├── lstm_model.py         # LSTM (Deep Learning) implementation
+│   └── ...
+└── Analysis/
+    ├── impact_analysis.py    # Feature importance analysis
+    └── model_comparison.py   # Legacy comparison script
+```
 
-## Project Description
+## Features
+The input data includes:
+* **Hourly Electricity Prices** (GBP/mWh)
+* **Commodity Prices**: Coal, Natural Gas, Uranium, Oil
+* **Weather Data**: Temperature
+* **Derived Cyclical Features**: 
+    * Hour of Day (Sin/Cos)
+    * Day of Week (Sin/Cos)
+    * Month of Year (Sin/Cos)
 
-The project began with the need to collect electricity price data. Hourly electricity prices were collected from Nordpool, 
-who run several European electricity markets. The years collected were 2013- 2019, with 2018 used as a validation set, and 
-2019 the test set.
-
-A naive method was used as a baseline, in which the price in 24 hours was predicted to be the price now.
-
-Hourly Temperature Data was collected using the DarkSky API in 61,000 requests. 
-
-Daily commodity price data was collected for various inputs in the production of electricity, namely:
-
- * Coal
- * Natural Gas
- * Uranium
- * Oil
-
-These extra variables all effect the price of electricity and so have predictive power.
-
-Being time series analysis, time was spent reshaping the data depending on each different models requirement, namely the
-regression trees and neural networks.
-
-Neural networks were run on google collab due to increased spead thanks to the inbuild TPU. The results (predictions) were
-downloaded as CSV for analysis within jupyter notebooks.
-
-This led to models that from any hour intook 168 hours of the past (1 week) as inputs of all the variables, and outputted
-a 24 hour prediction.
-
-The measure of accuracy used was MAPE. This was used because it is generally easy to interpret as the average error rate,
-and is useful as a percentage for interperability. However some 0 values meant extra work had to go into calculating it,
-and meant it was not always the best measure of model accuracy.
-
-
-
-## Needs of this project
-
-- data exploration/descriptive statistics
-- data processing/cleaning
-- statistical modeling
-- predictive modelling
-- non-technical presentation
+## Models
+Three primary model types are implemented and compared:
+1. **Naive Baselines**:
+   - `Naive 24h`: Persists the price from the same hour yesterday.
+   - `Naive 7d`: Persists the price from the same hour last week.
+2. **XGBoost**: Gradient boosted decision trees using all available features and lag variables.
+3. **LSTM**: Long Short-Term Memory neural network for sequence prediction (requires TensorFlow).
 
 ## Getting Started
 
-1. Clone this repo (for help see this [tutorial](https://help.github.com/articles/cloning-a-repository/)).
-2. Raw Data is being kept [here](https://github.com/Carterbouley/ElectricityPricePrediction/tree/master/data) within this repo.
-    
-3. Data processing/transformation scripts are being kept [here](https://github.com/Carterbouley/ElectricityPricePrediction/blob/master/functions.py)
+### 1. Installation
+Clone the repository and install the required packages:
+```bash
+git clone <repo_url>
+cd ElectricityPricePrediction
+pip install -r requirements.txt
+```
+*Note: TensorFlow is optional but required for the LSTM model. If not installed, the pipeline will skip LSTM.*
 
+### 2. Running the Pipeline
+To run the full forecasting and comparison pipeline, simply execute the main script:
 
-## Featured Notebooks/Analysis/Deliverables
+```bash
+python run_forecast.py
+```
 
-| Name                   | Description |
-| :---                    | --- |
-| project_name            | A name for your project. Used mostly within documentation | 
-| Initial_eda.ipynb       | Early data wrangling, exploration and simple analysis | 
-| functions.py            | Refactored functions that are reused throughout the notebooks|
-| data                    | Folder containing csvs of data collected |
-| model_result            | Results of nerual network predictions | 
-| weather_file.csv        | Result from DarkSky API call| 
-| re_fixed...series.csv   | Single and multivariate cleaned time series .csv | 
-| Battery                 | Simple model of tesla battery based on best predictive model | 
-| ARIMA & XGBoost.ipynb   | ARIMA & XGBoost models | 
-| naive_methods.ipynb     | Baseline model | 
-| multivariate_LSTM_ele...| Google collab neural network upload| 
-| Electricity Pr ... .pdf | Non-technical presentation | 
-| ResultAnalysis.ipynb    | Neural network result analysis|
+> [!WARNING]
+> **Mac M-Series Users**: If you encounter a "segmentation fault" when running the above, it is due to an incompatibility with your installed TensorFlow version and your sophisticated M-chip. This is a known issue.
+> 
+> **Solution**: Run the pipeline without the LSTM model:
+> ```bash
+> python run_forecast.py --skip_lstm
+> ```
 
+This will:
+1. Load and preprocess the data.
+2. Train and evaluate all available models.
+3. Print a performance summary (RMSE/MAE/MAPE).
+4. Save a results text file and a forecast comparison plot in `Analysis/plots/`.
 
+### 3. Feature Impact Analysis
+To see which features (e.g., Oil Price vs. Coal Price) drive the model the most, run:
+```bash
+python Analysis/impact_analysis.py
+```
 
-## Contact Me
-* If you want to contact me, [you can do that here](https://www.linkedin.com/in/carter-b-159ab6a1/).  
-* Or at carterbouley@gmail.com.
-* Feel free to contact team leads with any questions or if you are interested in contributing!
+## Contact
+* Original Project by: Carter Bouley
+* Contributed by: Mohsin Ghaffar
+

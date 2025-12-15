@@ -1,116 +1,133 @@
 import pandas as pd
 import numpy as np
-import matplotlib
-matplotlib.use('Agg') # Fix for Mac segfault
 import matplotlib.pyplot as plt
 import os
 import sys
-import subprocess
-from utils.data_loader import DataLoader
-from models.xgboost_model import XGBoostModel
+import xgboost as xgb
 
-# Safety check for XGBoost
-def is_module_safe(module_name):
-    try:
-        subprocess.check_call([sys.executable, "-c", f"import {module_name}"], 
-                              stdout=subprocess.DEVNULL, 
-                              stderr=subprocess.DEVNULL)
-        return True
-    except:
-        return False
+# Add project root to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-XGBOOST_AVAILABLE = is_module_safe("xgboost")
+from XGBoost.xgboost_model import XGBoostModel
 
-def generate_dummy_data(days=365):
-    """Generates dummy data for testing."""
-    dates = pd.date_range(start='2024-01-01', periods=days*24, freq='H')
-    price = np.random.normal(50, 10, size=len(dates)) + np.sin(np.linspace(0, 100, len(dates))) * 20
-    load = np.random.normal(1000, 100, size=len(dates)) + np.cos(np.linspace(0, 100, len(dates))) * 200
-    df = pd.DataFrame({'Price': price, 'LoadForecast': load}, index=dates)
+def load_data(filepath):
+    """
+    Loads the dataset properly handling time index.
+    """
+    if not os.path.exists(filepath):
+        print(f"Data file not found at {filepath}")
+        return None
+    
+    df = pd.read_csv(filepath)
+    if 'time' in df.columns:
+        df['time'] = pd.to_datetime(df['time'])
+        df.set_index('time', inplace=True)
+    elif 'Date' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'])
+        df.set_index('Date', inplace=True)
+    elif 'datetime' in df.columns:
+        df['datetime'] = pd.to_datetime(df['datetime'])
+        df.set_index('datetime', inplace=True)
+        
     return df
 
 def main():
-    if not XGBOOST_AVAILABLE:
-        print("XGBoost is not available on this system. Cannot run impact analysis.")
+    # 1. Load Data
+    # Use the absolute path logic to find the data
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    data_path = os.path.join(base_dir, 'data/re_fixed_multivariate_timeseires.csv')
+    
+    print(f"Loading data from {data_path}...")
+    df = load_data(data_path)
+    
+    if df is None:
+        print("Could not load data. Exiting.")
         return
 
-    print("Step 1: Loading Data...")
-    loader = DataLoader()
-    try:
-        df = loader.load_data()
-    except FileNotFoundError:
-        print("Data files not found. Using dummy data for demonstration.")
-        df = generate_dummy_data()
-
-    # Split data
-    train_size = int(len(df) * 0.8)
-    test_start_idx = train_size
+    # Check for Oil Price and other features
+    print("Available features:", df.columns.tolist())
     
-    # Scenario 1: Price Only
-    print("\nStep 2: Training XGBoost (Price Only)...")
-    # Create a dataframe with Price and a Lag feature, but NO LoadForecast
-    df_price_only = df[['Price']].copy()
-    # Add a lag feature so the model has something to predict from (autoregression)
-    # XGBoostModel doesn't automatically create lags, it expects features.
-    df_price_only['Price_Lag24'] = df_price_only['Price'].shift(24)
-    df_price_only.dropna(inplace=True)
+    target_col = 'price' if 'price' in df.columns else 'GBP/mWh'
+    if target_col not in df.columns:
+        # Fallback
+        target_col = df.columns[0]
     
-    # We need to align indices after dropna
-    # But wait, XGBoostModel splits by index. If we drop rows, indices change/shift relative to original df.
-    # Better to keep the dataframe structure but just drop the LoadForecast column.
+    print(f"Target Variable: {target_col}")
+
+    # 2. Train XGBoost Model
+    print("\nTraining XGBoost to determine feature importance...")
     
-    df_price_only = df.drop(columns=['LoadForecast']).copy()
-    # Ensure we have at least one feature besides target. 
-    # If original df only had Price and LoadForecast, dropping LoadForecast leaves only Price.
-    # XGBoostModel removes target from features -> 0 features.
-    # So we MUST add a feature.
-    df_price_only['Price_Lag24'] = df_price_only['Price'].shift(24)
-    df_price_only.fillna(method='ffill', inplace=True) # Handle NaN from shift
-    df_price_only.fillna(method='bfill', inplace=True) # Handle initial NaNs
-
-    xgb_price = XGBoostModel(df_price_only, target_col='Price')
-    xgb_price.preprocess()
-    xgb_price.train(train_end_idx=train_size)
-    metrics_price = xgb_price.evaluate(test_start_idx=test_start_idx)
-    print(f"Price Only: RMSE={metrics_price['rmse']:.4f}, MAE={metrics_price['mae']:.4f}")
-
-    # Scenario 2: Price + Load Forecast
-    print("\nStep 3: Training XGBoost (Price + Load Forecast)...")
-    # Add lag to full df too for fair comparison
-    df_full = df.copy()
-    df_full['Price_Lag24'] = df_full['Price'].shift(24)
-    df_full.fillna(method='ffill', inplace=True)
-    df_full.fillna(method='bfill', inplace=True)
+    # We use the whole dataset (or a large train split) to get robust feature importance
+    # Let's straightforwardly split as in model_comparison
+    # Train: < 2019, but actually for feature importance we might want to use as much data as possible.
+    # We will stick to the standard train/test split to be consistent.
+    test_start_date = '2019-01-01'
+    df.sort_index(inplace=True)
+    train_df = df[df.index < test_start_date].copy()
     
-    xgb_full = XGBoostModel(df_full, target_col='Price')
-    xgb_full.preprocess()
-    xgb_full.train(train_end_idx=train_size)
-    metrics_full = xgb_full.evaluate(test_start_idx=test_start_idx)
-    print(f"With Load:  RMSE={metrics_full['rmse']:.4f}, MAE={metrics_full['mae']:.4f}")
-
-    # Plotting
-    print("\nStep 4: Generating Impact Plot...")
-    plt.figure(figsize=(15, 8))
-    plot_len = 240
-    if len(df) > plot_len:
-        plot_idx = df.index[-plot_len:]
-        plt.plot(plot_idx, df['Price'].iloc[-plot_len:], label='Actual', color='black', linewidth=2)
-        
-        if len(metrics_price['y_pred']) >= plot_len:
-            plt.plot(plot_idx, metrics_price['y_pred'][-plot_len:], label='Price Only', linestyle='--')
-            
-        if len(metrics_full['y_pred']) >= plot_len:
-            plt.plot(plot_idx, metrics_full['y_pred'][-plot_len:], label='Price + Load', color='green')
-
-    plt.title('Impact of Load Forecast on Prediction Accuracy (XGBoost)')
-    plt.xlabel('Time')
-    plt.ylabel('Price (GBP/mWh)')
-    plt.legend()
-    plt.grid(True)
+    if train_df.empty:
+         # use 80% split if dates don't align
+         train_size = int(len(df) * 0.8)
+         train_df = df.iloc[:train_size].copy()
     
-    plot_path = 'ElectricityPricePrediction/impact_analysis_plot.png'
-    plt.savefig(plot_path)
-    print(f"Plot saved to {plot_path}")
+    # Initialize Model
+    # We pass the full dataframe to initialization as per class design
+    xgb_model = XGBoostModel(df, target_col=target_col)
+    xgb_model.preprocess()
+    
+    # Train
+    xgb_model.train(train_end_idx=len(train_df))
+    
+    # 3. Extract Feature Importances
+    if xgb_model.model is None:
+        print("Model failed to train.")
+        return
+
+    # Get feature importance
+    # XGBoost provides different types: 'weight', 'gain', 'cover'. 'gain' is usually most interpretable for "impact".
+    importance_type = 'gain'
+    importances = xgb_model.model.get_booster().get_score(importance_type=importance_type)
+    
+    # The keys in `importances` are 'f0', 'f1' etc. corresponding to feature_cols
+    # We need to map them back to names.
+    # XGBoostModel.feature_cols holds the names.
+    feature_names = xgb_model.feature_cols
+    
+    # Map f0 -> feature_name
+    min_len = len(feature_names)
+    # Note: feature_importances_ property often returns array aligned with X columns
+    # Let's try the array property first which is safer if sklearn API is used
+    if hasattr(xgb_model.model, 'feature_importances_'):
+        vals = xgb_model.model.feature_importances_
+        # vals corresponds to feature_names order
+        importance_dict = dict(zip(feature_names, vals))
+    else:
+        # Fallback
+        importance_dict = importances
+
+    # Sort
+    sorted_importance = sorted(importance_dict.items(), key=lambda item: item[1], reverse=False)
+    
+    # Separate names and values
+    sorted_names = [x[0] for x in sorted_importance]
+    sorted_vals = [x[1] for x in sorted_importance]
+
+    print("\nFeature Importances (Top 10):")
+    for name, val in sorted(importance_dict.items(), key=lambda item: item[1], reverse=True)[:10]:
+        print(f"{name}: {val:.4f}")
+
+    # 4. Plot
+    plt.figure(figsize=(12, 8))
+    plt.barh(sorted_names, sorted_vals, color='teal')
+    plt.title(f'XGBoost Feature Importance (Feature Impact on {target_col})')
+    plt.xlabel('Relative Importance (Gain)')
+    plt.tight_layout()
+    
+    plot_dir = os.path.join(base_dir, 'Analysis', 'plots')
+    os.makedirs(plot_dir, exist_ok=True)
+    save_path = os.path.join(plot_dir, 'feature_importance.png')
+    plt.savefig(save_path)
+    print(f"\nFeature importance plot saved to: {save_path}")
 
 if __name__ == "__main__":
     main()

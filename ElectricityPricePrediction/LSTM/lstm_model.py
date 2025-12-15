@@ -1,135 +1,163 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+
 
 class LSTMModel:
-    def __init__(self, df, target_col='GBP/mWh', feature_cols=None, window_size=24, forecast_horizon=24):
-        """
-        Initialize the LSTMModel.
-        
-        Args:
-            df (pd.DataFrame): The dataframe containing the time series data.
-            target_col (str): The name of the target column.
-            feature_cols (list): List of feature column names.
-            window_size (int): The number of past time steps to use as input.
-            forecast_horizon (int): The number of future time steps to predict.
-        """
+    def __init__(
+        self,
+        df,
+        target_col="GBP/mWh",
+        feature_cols=None,
+        window_size=168,
+        forecast_horizon=24,
+        clip_outputs=False,
+    ):
         self.df = df.copy()
         self.target_col = target_col
-        self.feature_cols = feature_cols if feature_cols else [c for c in df.columns if c != target_col]
-        # Ensure target is included in features for multivariate forecasting if needed, 
-        # or handle separately. For now, we assume features include target lag if passed, 
-        # but usually we construct X from all features including past target.
-        if target_col not in self.feature_cols:
-            self.feature_cols.append(target_col)
-            
-        self.window_size = window_size
-        self.forecast_horizon = forecast_horizon
+        self.feature_cols = feature_cols if feature_cols else [
+            c for c in df.columns if c != target_col
+        ]
+
+        # Include target in input for autoregression
+        self.input_cols = (
+            self.feature_cols
+            + ([target_col] if target_col not in self.feature_cols else [])
+        )
+
+        self.window_size = int(window_size)
+        self.forecast_horizon = int(forecast_horizon)
+        self.clip_outputs = clip_outputs
+
+        self.x_scaler = MinMaxScaler(feature_range=(0, 1))
+        self.y_scaler = MinMaxScaler(feature_range=(0, 1))
         self.model = None
-        self.scaler = MinMaxScaler(feature_range=(0, 1))
 
-    def preprocess(self):
-        """
-        Scales the data and creates sequences.
-        """
-        self.df.fillna(method='ffill', inplace=True)
-        data = self.df[self.feature_cols].values
-        self.data_scaled = self.scaler.fit_transform(data)
-        return self.data_scaled
+    def _clean_array(self, arr, name="array"):
+        arr = np.asarray(arr, dtype=np.float32)
+        n_nan = np.isnan(arr).sum()
+        n_inf = np.isinf(arr).sum()
+        if n_nan + n_inf > 0:
+            # last-resort cleanup
+            arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+        return arr
 
-    def create_sequences(self, data):
-        """
-        Creates input sequences (X) and targets (y).
-        """
+    def _make_xy(self, X_scaled, y_scaled):
         X, y = [], []
-        # We want to predict the *next* forecast_horizon steps
-        # So if we are at index i, input is [i-window_size : i], target is [i : i+forecast_horizon]
-        # We need to ensure we have enough data
-        
-        target_idx = self.feature_cols.index(self.target_col)
-        
-        for i in range(self.window_size, len(data) - self.forecast_horizon + 1):
-            X.append(data[i - self.window_size : i])
-            y.append(data[i : i + self.forecast_horizon, target_idx])
-            
-        return np.array(X), np.array(y)
+        n = len(X_scaled)
+        max_i = n - self.forecast_horizon + 1
+        for i in range(self.window_size, max_i):
+            X.append(X_scaled[i - self.window_size : i, :])
+            y.append(y_scaled[i : i + self.forecast_horizon, 0])
+        if not X:
+            # No windows possible
+            return np.zeros((0, self.window_size, X_scaled.shape[1]), dtype=np.float32), \
+                   np.zeros((0, self.forecast_horizon), dtype=np.float32)
+        return np.array(X, dtype=np.float32), np.array(y, dtype=np.float32)
 
-    def build_model(self, input_shape):
-        """
-        Builds the LSTM/GRU model architecture.
-        Simplified for better performance on smaller datasets.
-        """
-        model = keras.models.Sequential([
-            keras.layers.LSTM(50, input_shape=input_shape, return_sequences=False),
-            keras.layers.Dropout(0.2),
-            keras.layers.Dense(self.forecast_horizon)
-        ])
-        
-        model.compile(loss="mse", optimizer="adam", metrics=["mae"])
+    def build_model(self, input_shape, units_1=64, units_2=32, dropout=0.2, learning_rate=0.001):
+        inputs = keras.Input(shape=input_shape)
+        x = keras.layers.LSTM(units_1, return_sequences=True)(inputs)
+        x = keras.layers.Dropout(dropout)(x)
+        x = keras.layers.LSTM(units_2, return_sequences=False)(x)
+        x = keras.layers.LayerNormalization()(x)
+        x = keras.layers.Dense(64, activation="relu")(x)
+        x = keras.layers.Dropout(dropout)(x)
+        outputs = keras.layers.Dense(self.forecast_horizon)(x)
+
+        model = keras.Model(inputs, outputs)
+        opt = keras.optimizers.Adam(learning_rate=learning_rate, clipnorm=0.5)
+        model.compile(loss=keras.losses.Huber(), optimizer=opt, metrics=["mae"])
         return model
 
-    def train(self, train_split_ratio=0.95, epochs=50, batch_size=32):
-        """
-        Trains the model.
-        """
-        X, y = self.create_sequences(self.data_scaled)
-        
-        # Use more data for training (95%) to capture recent trends (Winter 2018)
-        train_size = int(len(X) * train_split_ratio)
-        X_train, y_train = X[:train_size], y[:train_size]
-        X_val, y_val = X[train_size:], y[train_size:]
-        
-        self.model = self.build_model((X_train.shape[1], X_train.shape[2]))
-        
-        # Reduced patience to prevent overfitting if validation loss fluctuates
-        early_stopping = keras.callbacks.EarlyStopping(patience=10, restore_best_weights=True)
-        
-        history = self.model.fit(
-            X_train, y_train,
-            epochs=epochs,
-            batch_size=batch_size,
-            validation_data=(X_val, y_val),
-            callbacks=[early_stopping],
-            verbose=1
+    def train(self, train_ratio=0.85, epochs=30, batch_size=32, 
+              units_1=64, units_2=32, dropout=0.2, learning_rate=0.001):
+        self.df = self.df.ffill().bfill().fillna(0)
+
+        data_x = self._clean_array(self.df[self.input_cols].values, "X")
+        data_y = self._clean_array(self.df[[self.target_col]].values, "y")
+
+        split = int(len(self.df) * train_ratio)
+
+        X_train_raw, X_val_raw = data_x[:split], data_x[split:]
+        y_train_raw, y_val_raw = data_y[:split], data_y[split:]
+
+        X_train = self.x_scaler.fit_transform(X_train_raw)
+        y_train = self.y_scaler.fit_transform(y_train_raw)
+        X_val = self.x_scaler.transform(X_val_raw)
+        y_val = self.y_scaler.transform(y_val_raw)
+
+        X_t, y_t = self._make_xy(X_train, y_train)
+        X_v, y_v = self._make_xy(X_val, y_val)
+
+        if X_t.shape[0] == 0:
+            raise ValueError(
+                "Not enough data to create training windows. "
+                "Increase dataset size or reduce window_size/forecast_horizon."
+            )
+
+        self.model = self.build_model(
+            (X_t.shape[1], X_t.shape[2]),
+            units_1=units_1,
+            units_2=units_2,
+            dropout=dropout,
+            learning_rate=learning_rate
         )
-        print("LSTM training completed.")
-        return history
 
-    def predict(self, data_scaled=None):
-        """
-        Generates predictions.
-        """
-        if self.model is None:
-            raise Exception("Model has not been trained yet.")
-            
-        if data_scaled is None:
-            data_scaled = self.data_scaled
-            
-        X, _ = self.create_sequences(data_scaled)
-        y_pred_scaled = self.model.predict(X)
-        
-        # Inverse transform is tricky because scaler was fit on all features.
-        # We need to construct a dummy array to inverse transform just the target.
-        # Or we can create a separate scaler for target in __init__.
-        # For simplicity, let's assume we use the min/max of the target column from the fitted scaler.
-        
-        target_idx = self.feature_cols.index(self.target_col)
-        min_val = self.scaler.data_min_[target_idx]
-        max_val = self.scaler.data_max_[target_idx]
-        scale = max_val - min_val
-        
-        y_pred = y_pred_scaled * scale + min_val
-        
-        return y_pred
+        callbacks = [
+            keras.callbacks.EarlyStopping(
+                monitor="val_loss", patience=5, restore_best_weights=True
+            )
+        ]
 
-    def evaluate(self, test_start_idx):
-        """
-        Evaluates the model.
-        """
-        # This needs careful alignment with the sequences
-        # For simplicity in this skeleton, we'll just return the predictions for now
-        # and handle rigorous evaluation alignment in the comparison script.
-        pass
+        if X_v.shape[0] == 0:
+            # Train without validation set
+            self.model.fit(
+                X_t,
+                y_t,
+                epochs=epochs,
+                batch_size=batch_size,
+                verbose=1,
+                callbacks=callbacks,
+                validation_split=0.1,
+            )
+        else:
+            self.model.fit(
+                X_t,
+                y_t,
+                validation_data=(X_v, y_v),
+                epochs=epochs,
+                batch_size=batch_size,
+                verbose=1,
+                callbacks=callbacks,
+            )
+
+    def predict_on_df(self, df_new):
+        """Predict on a df that includes the target; returns (y_pred, y_true)."""
+        df_new = df_new.copy().ffill().bfill().fillna(0)
+
+        data_x = self._clean_array(df_new[self.input_cols].values, "X_new")
+        data_y = self._clean_array(df_new[[self.target_col]].values, "y_new")
+
+        X_scaled = self.x_scaler.transform(data_x)
+        y_scaled = self.y_scaler.transform(data_y)
+
+        X, y_true_scaled = self._make_xy(X_scaled, y_scaled)
+        if X.shape[0] == 0:
+            raise ValueError(
+                "Not enough data in df_new to create prediction windows. "
+                "Need at least window_size + forecast_horizon rows."
+            )
+
+        pred_scaled = self.model.predict(X, verbose=0)
+        pred_scaled = np.nan_to_num(pred_scaled)
+
+        if self.clip_outputs:
+            pred_scaled = np.clip(pred_scaled, 0.0, 1.0)
+
+        y_pred = self.y_scaler.inverse_transform(pred_scaled)
+        y_true = self.y_scaler.inverse_transform(y_true_scaled)
+
+        return y_pred, y_true
