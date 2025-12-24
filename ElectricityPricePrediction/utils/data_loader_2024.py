@@ -3,169 +3,220 @@ import numpy as np
 import os
 
 class DataLoader2024:
-    def __init__(self, data_dir='data'):
-        self.data_dir = data_dir
-        self.price_file = os.path.join(data_dir, 'GUI_ENERGY_PRICES_2024.csv')
-        self.coal_file = os.path.join(data_dir, 'CoalPrices.csv')
-        self.gas_file = os.path.join(data_dir, 'MonthlyGasPrice.csv')
-
+    def __init__(self, base_dir=None):
+        # Determine base directory (project root)
+        if base_dir is None:
+            # Assuming this file is in utils/, go up one level
+            self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        else:
+            self.base_dir = base_dir
+            
     def load_data(self):
         """
-        Loads and processes the 2024 Market Data and Commodities.
-        Returns a cleaned DataFrame with hourly frequency.
+        Loads and merges all data sources into a single hourly DataFrame.
         """
-        print(f"Loading 2024 Data from {self.data_dir}...")
+        print("Loading 2024 Data...")
         
-        # 1. Load Electricity Prices
-        # Structure: "MTU (UTC)","Area","Sequence","Day-ahead Price (EUR/MWh)",...
-        # Timestamp format: "31/12/2023 23:00:00 - 31/12/2023 23:15:00" (Quarter hourly?)
-        # Wait, the rows show 15 min intervals e.g. 23:00-23:15. 
-        # But user asked for hourly comparison. I might need to resample or check if hourly data exists.
-        # The prompt says "with hourly timesteps". The file has 15 min resolution.
-        # I will resample to Hourly Mean.
+        # 1. Load Price Data (GUI_ENERGY_PRICES_2024.csv)
+        price_path = os.path.join(self.base_dir, 'data', 'GUI_ENERGY_PRICES_2024.csv')
+        df_price = self._load_price_data(price_path)
         
-        df_price = pd.read_csv(self.price_file)
+        # 2. Hourly Load Data SKIPPED (User Request)
+        # Relying on Price, Fuels, and Cyclical features only.
+        df = df_price
         
-        # Filter Sequence 2
-        df_price = df_price[df_price['Sequence'] == 'Sequence Sequence 2'].copy()
+        # 3. Load Weekly Load Data
+        week_load_path = os.path.join(self.base_dir, 'LOAD_DAYAHEAD_FullYear_Data.csv')
+        df = self._merge_weekly_load(df, week_load_path)
         
-        # Parse Dates (Take the start part of "Start - End")
-        # "31/12/2023 23:00:00 - ..." -> "31/12/2023 23:00:00"
-        df_price['timestamp_str'] = df_price['MTU (UTC)'].str.split(' - ').str[0]
-        df_price['Date'] = pd.to_datetime(df_price['timestamp_str'], format='%d/%m/%Y %H:%M:%S')
-        
-        # Set Index
-        df_price.set_index('Date', inplace=True)
-        df_price.sort_index(inplace=True)
-        
-        # Select Price Column
-        price_col = 'Day-ahead Price (EUR/MWh)'
-        if price_col not in df_price.columns:
-            raise ValueError(f"Price column '{price_col}' not found.")
-            
-        df_price = df_price[[price_col]].rename(columns={price_col: 'Price'})
-        
-        # Convert to numeric (handle potential string issues)
-        df_price['Price'] = pd.to_numeric(df_price['Price'], errors='coerce')
-        
-        # Resample to Hourly (Taking mean of the 4 quarters)
-        df_hourly = df_price.resample('h').mean()
-        
-        # Interpolate small gaps if any
-        df_hourly['Price'] = df_hourly['Price'].interpolate(method='linear')
-
-        # 2. Load Commodities (Monthly) - Restored
-        # Coal
-        coal_df = pd.read_csv(self.coal_file)
-        coal_df['observation_date'] = pd.to_datetime(coal_df['observation_date'])
-        coal_df.set_index('observation_date', inplace=True)
-        coal_df.rename(columns={'PCOALAUUSDM': 'Coal_Price'}, inplace=True)
-        
-        # Gas
-        gas_df = pd.read_csv(self.gas_file)
-        gas_df['observation_date'] = pd.to_datetime(gas_df['observation_date'])
-        gas_df.set_index('observation_date', inplace=True)
-        gas_df.rename(columns={'PNGASEUUSDM': 'Gas_Price'}, inplace=True)
-        
-        # 3. Merge Commodities
-        def upsample_monthly(monthly_df, target_idx):
-            combined_idx = monthly_df.index.union(target_idx).sort_values()
-            ts = monthly_df.reindex(combined_idx)
-            ts = ts.ffill() 
-            return ts.reindex(target_idx)
-            
-        df_hourly['Coal'] = upsample_monthly(coal_df, df_hourly.index)['Coal_Price']
-        df_hourly['Gas'] = upsample_monthly(gas_df, df_hourly.index)['Gas_Price']
-        
-        # 4. Fetch Weather Data (Open-Meteo API)
-        # Using Berlin coords (52.52, 13.41) as Germany proxy
-        try:
-            print("Fetching Weather Data from Open-Meteo (Berlin)...")
-            # 2024 full year
-            url = "https://archive-api.open-meteo.com/v1/archive"
-            params = {
-                "latitude": 52.52,
-                "longitude": 13.41,
-                "start_date": "2024-01-01",
-                "end_date": "2024-12-31",
-                "hourly": "temperature_2m,wind_speed_10m"
-            }
-            import requests
-            response = requests.get(url, params=params)
-            data = response.json()
-            
-            weather_hourly = data['hourly']
-            df_weather = pd.DataFrame({
-                'Date': pd.to_datetime(weather_hourly['time']),
-                'Temperature': weather_hourly['temperature_2m'],
-                'Wind_Speed': weather_hourly['wind_speed_10m']
-            })
-            df_weather.set_index('Date', inplace=True)
-            
-            # Merge Weather (Left join/Reindex to ensure alignment)
-            # Weather is hourly, matching price
-            df_hourly = df_hourly.join(df_weather, how='left')
-            
-            # Fill small gaps if API missing
-            df_hourly['Temperature'] = df_hourly['Temperature'].interpolate()
-            df_hourly['Wind_Speed'] = df_hourly['Wind_Speed'].interpolate()
-            
-        except Exception as e:
-            print(f"Warning: Failed to fetch weather data: {e}. Proceeding without it.")
-        
-        # Fill any remaining NaNs (e.g. if price data starts before commodity data)
-        df_hourly.ffill(inplace=True)
-        df_hourly.bfill(inplace=True)
+        # 4. Load Fuel Prices
+        coal_path = os.path.join(self.base_dir, 'data', 'CoalPrices.csv')
+        gas_path = os.path.join(self.base_dir, 'data', 'MonthlyGasPrice.csv')
+        df = self._merge_fuel_prices(df, coal_path, gas_path)
         
         # 5. Feature Engineering (Cyclical)
-        df_hourly = self.add_cyclical_features(df_hourly)
+        df = self._add_cyclical_features(df)
         
-        # 6. Add Lag Features (Crucial for LSTM to beat Naive)
-        # Explicitly give "Yesterday's Price" and "Last Week's Price"
-        df_hourly['lag_24h'] = df_hourly['Price'].shift(24)
-        df_hourly['lag_168h'] = df_hourly['Price'].shift(168)
+        # 6. Final Cleanup
+        # Strict ffill for missing values (fuels/weekly) to avoid lookahead
+        df = df.ffill()
+        df = df.dropna() # Drop any remaining NaNs at the start
         
-        # 7. Residual Target (Price - Lag24)
-        # We will try to predict the *change* from yesterday, not the absolute price.
-        df_hourly['Residual'] = df_hourly['Price'] - df_hourly['lag_24h']
-        
-        # Drop NaNs created by lags
-        df_hourly = df_hourly.dropna()
+        print(f"Data Loaded Successfully. Shape: {df.shape}")
+        print(f"Columns: {df.columns.tolist()}")
+        return df
 
-        print(f"Data Loaded. Shape: {df_hourly.shape}")
+    def _load_price_data(self, path):
+        print(f"Reading Price Data: {path}")
+        df = pd.read_csv(path)
+        
+        # Filter Area and Sequence
+        # "Sequence Sequence 1" seems to be the format in the file based on head
+        df = df[df['Area'] == 'BZN|DE-LU']
+        df = df[df['Sequence'] == 'Sequence Sequence 1']
+        
+        # Parse Time (MTU UTC)
+        # Format: "31/12/2023 23:00:00 - 31/12/2023 23:15:00"
+        # We take the start time
+        df['MTU_Start'] = df['MTU (UTC)'].str.split(' - ').str[0]
+        df['Date'] = pd.to_datetime(df['MTU_Start'], format='%d/%m/%Y %H:%M:%S', utc=True)
+        
+        # Set Index
+        df = df.set_index('Date').sort_index()
+        
+        # Select Price
+        df = df[['Day-ahead Price (EUR/MWh)']].rename(columns={'Day-ahead Price (EUR/MWh)': 'Price'})
+        
+        # Convert to numeric
+        df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+        
+        # Resample to Hourly (Mean)
+        # 15-min to 60-min
+        df_hourly = df.resample('h').mean()
+        
         return df_hourly
 
-    def add_cyclical_features(self, df):
-        df = df.copy()
+    def _load_hourly_load(self, path):
+        print(f"Reading Hourly Load Data: {path}")
+        df = pd.read_csv(path)
         
-        # Hour
-        df['hour_sin'] = np.sin(2 * np.pi * df.index.hour / 24)
-        df['hour_cos'] = np.cos(2 * np.pi * df.index.hour / 24)
+        # Filter Area if needed (file seems to have BZN|DE-LU)
+        df = df[df['Area'] == 'BZN|DE-LU']
         
-        # Day of Week
-        df['day_sin'] = np.sin(2 * np.pi * df.index.dayofweek / 7)
-        df['day_cos'] = np.cos(2 * np.pi * df.index.dayofweek / 7)
+        # Parse Time (MTU CET/CEST)
+        # Format: "01/01/2024 00:00 - 01/01/2024 00:15"
+        # Parse as naive then localize? Or just trust it aligns?
+        # The file says CET/CEST. 
+        # "01/01/2024 00:00" CET is "31/12/2023 23:00" UTC.
+        # We need to parse strict.
         
-        # Month
-        df['month_sin'] = np.sin(2 * np.pi * df.index.month / 12)
-        df['month_cos'] = np.cos(2 * np.pi * df.index.month / 12)
+        df['MTU_Start'] = df['MTU (CET/CEST)'].str.split(' - ').str[0]
+        # Allow dayfirst=True for safety
+        df['Date'] = pd.to_datetime(df['MTU_Start'], dayfirst=True)
         
-        # --- Rolling Features (Volatility & Trends) ---
-        # 24h (Daily)
-        df['rolling_mean_24h'] = df['Price'].rolling(window=24, min_periods=1).mean()
-        df['rolling_std_24h']  = df['Price'].rolling(window=24, min_periods=1).std().fillna(0)
+        # Localize to CET then convert to UTC
+        # "Europe/Berlin" handles CET/CEST transitions
+        df['Date'] = df['Date'].dt.tz_localize('Europe/Berlin', ambiguous='infer', nonexistent='shift_forward').dt.tz_convert('UTC')
         
-        # 168h (Weekly)
-        df['rolling_mean_168h'] = df['Price'].rolling(window=168, min_periods=1).mean()
-        df['rolling_std_168h'] = df['Price'].rolling(window=168, min_periods=1).std().fillna(0)
+        df = df.set_index('Date').sort_index()
         
-        # 720h (Monthly)
-        df['rolling_mean_720h'] = df['Price'].rolling(window=720, min_periods=1).mean()
+        # Select Columns
+        # "Day-ahead Total Load Forecast (MW)"
+        # "Actual Total Load (MW)"
+        # We focus on Forecast as usually that's what we have Day-Ahead
+        cols_map = {
+            'Day-ahead Total Load Forecast (MW)': 'Load_Forecast',
+            'Actual Total Load (MW)': 'Load_Actual'
+        }
+        df = df.rename(columns=cols_map)
+        
+        # Keep only available columns
+        available_cols = [c for c in cols_map.values() if c in df.columns]
+        df = df[available_cols]
+        
+        # Numeric conversion
+        for c in available_cols:
+            df[c] = pd.to_numeric(df[c], errors='coerce')
+            
+        # Resample to Hourly (Mean)
+        df_hourly = df.resample('h').mean()
+        
+        return df_hourly
+
+    def _merge_weekly_load(self, df, path):
+        print(f"Reading Weekly Load Data: {path}")
+        df_week = pd.read_csv(path)
+        
+        # Extract Week Number from "Week 1", "Week 2"
+        # Format: "Week X"
+        df_week['Week_Num'] = df_week['Week'].str.extract(r'(\d+)').astype(int)
+        
+        # Rename columns
+        col_map = {
+            'Forecast min [MW]': 'Load_Week_Min_Forecast',
+            'Forecast max [MW]': 'Load_Week_Max_Forecast'
+        }
+        df_week = df_week.rename(columns=col_map)
+        
+        # Keep only relevant
+        df_week = df_week[['Week_Num', 'Load_Week_Min_Forecast', 'Load_Week_Max_Forecast']]
+        
+        # Deduplicate Week_Num (take first)
+        df_week = df_week.drop_duplicates(subset=['Week_Num'])
+        
+        # Add Week Number to main df for integration
+        # Note: isoocalendar().week is standard
+        df['Week_Num'] = df.index.isocalendar().week.astype(int)
+        
+        # Merge
+        # We reset index to merge, then equality on Week_Num
+        df = df.reset_index()
+        df = pd.merge(df, df_week, on='Week_Num', how='left')
+        df = df.set_index('Date')
+        
+        # Drop Week_Num if not needed, or keep? Keeping is fine.
+        return df
+
+    def _merge_fuel_prices(self, df, coal_path, gas_path):
+        print("Reading Fuel Prices...")
+        # Coal
+        coal = pd.read_csv(coal_path)
+        coal['Date'] = pd.to_datetime(coal['observation_date'])
+        coal = coal.set_index('Date').sort_index()
+        coal.index = coal.index.tz_localize('UTC') # Ensure UTC
+        coal = coal.rename(columns={'PCOALAUUSDM': 'Coal_Price'})
+        # Resample to daily/hourly to ffill
+        coal = coal.resample('h').ffill()
+        
+        # Gas
+        gas = pd.read_csv(gas_path)
+        gas['Date'] = pd.to_datetime(gas['observation_date'])
+        gas = gas.set_index('Date').sort_index()
+        gas.index = gas.index.tz_localize('UTC') # Ensure UTC
+        gas = gas.rename(columns={'PNGASEUUSDM': 'Gas_Price'})
+        gas = gas.resample('h').ffill()
+        
+        # Merge logic:
+        # Since these are monthly start dates (2024-01-01, 2024-02-01), 
+        # we can merge_asof or just reindex.
+        # Simplest: Reindex to df.index using ffill
+        
+        # We combine them into a single fuels df first
+        # But ranges might differ.
+        
+        # Let's use reindex with ffill directly on the main df index
+        coal_aligned = coal.reindex(df.index, method='ffill')
+        gas_aligned = gas.reindex(df.index, method='ffill')
+        
+        df['Coal_Price'] = coal_aligned['Coal_Price']
+        df['Gas_Price'] = gas_aligned['Gas_Price']
+        
+        return df
+
+    def _add_cyclical_features(self, df):
+        # Hour of day (0-23)
+        df['hour'] = df.index.hour
+        df['hour_sin'] = np.sin(2 * np.pi * df['hour'] / 24)
+        df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24)
+        
+        # Day of week (0-6)
+        df['day_of_week'] = df.index.dayofweek
+        df['day_sin'] = np.sin(2 * np.pi * df['day_of_week'] / 7)
+        df['day_cos'] = np.cos(2 * np.pi * df['day_of_week'] / 7)
+        
+        # Month of year (1-12)
+        df['month'] = df.index.month
+        df['month_sin'] = np.sin(2 * np.pi * (df['month'] - 1) / 12)
+        df['month_cos'] = np.cos(2 * np.pi * (df['month'] - 1) / 12)
+        
+        # Drop raw columns
+        df = df.drop(columns=['hour', 'day_of_week', 'month'])
         
         return df
 
 if __name__ == "__main__":
+    # Test run
     loader = DataLoader2024()
     df = loader.load_data()
     print(df.head())
-    print(df.describe())
+    print(df.info())
