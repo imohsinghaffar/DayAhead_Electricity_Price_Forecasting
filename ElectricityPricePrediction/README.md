@@ -51,5 +51,11 @@ python src/run_forecast.py --probabilistic --use_weather
 - **Forecasts**: `results/forecast_values.csv` (includes uncertainty column if --probabilistic)
 - **Visualizations**: `Analysis/plots/comprehensive_analysis.png` (300 DPI)
 
+### 📈 Interactive Dashboard (View in Browser)
+Use the links below to view interactive charts (Zoom, Hover, Pan) directly without downloading:
+- 🔗 [**Live Forecast Comparison**](https://htmlpreview.github.io/?https://github.com/imohsinghaffar/DayAhead_Electricity_Price_Forecasting/blob/main/Analysis/Latest/Plots/Interactive/interactive_forecast.html)
+- 🔗 [**Interactive Error Analysis**](https://htmlpreview.github.io/?https://github.com/imohsinghaffar/DayAhead_Electricity_Price_Forecasting/blob/main/Analysis/Latest/Plots/Interactive/interactive_error_analysis.html)
+- 🔗 [**Latest Training Report (HTML)**](https://htmlpreview.github.io/?https://github.com/imohsinghaffar/DayAhead_Electricity_Price_Forecasting/blob/main/Analysis/Latest/report.html)
+
 ## ✍️ Author
 Electricity Price Prediction Project Refactor
