@@ -1,0 +1,112 @@
+
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+                h1 { color: #333; }
+                table { border-collapse: collapse; width: 100%; margin: 20px 0; background: white; }
+                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                th { background-color: #4CAF50; color: white; }
+                .plot-container { display: flex; flex-wrap: wrap; gap: 20px; }
+                .plot { max-width: 48%; border: 1px solid #ccc; }
+                .summary { background: #e7f3fe; padding: 15px; border-left: 6px solid #2196F3; margin: 20px 0; }
+            </style>
+            <title>Forecast Report - 20260113_165657</title>
+        </head>
+        <body>
+            <h1>Forecast Run Report: 20260113_165657</h1>
+            <div class="summary">
+                <strong>Run Timestamp:</strong> 2026-01-13T17:03:16.845051<br>
+                <strong>Status:</strong> Completed Successfully
+            </div>
+
+            <h2>Model Metrics</h2>
+            <table border="1" class="dataframe table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Model</th>
+      <th>RMSE</th>
+      <th>MAE</th>
+      <th>N_points</th>
+      <th>Delta_RMSE_vs_Naive</th>
+      <th>Delta_Pct_vs_Naive</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Naive_persistence</td>
+      <td>66.105187</td>
+      <td>38.025622</td>
+      <td>1727</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <td>Naive_naive_24h</td>
+      <td>91.311848</td>
+      <td>50.700614</td>
+      <td>1727</td>
+      <td>25.206661</td>
+      <td>38.131139</td>
+    </tr>
+    <tr>
+      <td>Naive_naive_7d</td>
+      <td>95.235195</td>
+      <td>51.550683</td>
+      <td>1727</td>
+      <td>29.130008</td>
+      <td>44.066145</td>
+    </tr>
+    <tr>
+      <td>XGBoost</td>
+      <td>66.237609</td>
+      <td>34.665211</td>
+      <td>1703</td>
+      <td>0.132422</td>
+      <td>0.200320</td>
+    </tr>
+    <tr>
+      <td>XGB_LagCyclical</td>
+      <td>74.596909</td>
+      <td>40.904634</td>
+      <td>1703</td>
+      <td>8.491721</td>
+      <td>12.845772</td>
+    </tr>
+    <tr>
+      <td>LSTM</td>
+      <td>37.481423</td>
+      <td>15.945136</td>
+      <td>1727</td>
+      <td>-28.623764</td>
+      <td>-43.300330</td>
+    </tr>
+  </tbody>
+</table>
+
+            <h2>Forecast Analysis</h2>
+            <div class="plot-container">
+                <div>
+                    <h3>Forecasting</h3>
+                    <img src="plots/forecasting/comprehensive_analysis.png" class="plot" style="max-width: 100%;">
+                </div>
+                <div>
+                    <h3>Error Analysis</h3>
+                    <img src="plots/error_analysis/forecasting_insights.png" class="plot" style="max-width: 100%;">
+                </div>
+                <div>
+                    <h3>Features</h3>
+                    <img src="plots/features/feature_importance.png" class="plot" style="max-width: 100%;">
+                </div>
+            </div>
+            
+            <h2>Sequential JSON Results</h2>
+            <p>Full metrics for this run are saved in <code>results_json/</code> with sequential naming:</p>
+            <ul>
+                <li>Individual model JSONs (e.g., <code>LSTM_RMSE_20260113_165657.json</code>)</li>
+            </ul>
+        
+            <p style="margin-top: 50px; color: #888;">&copy; Antigravity Forecasting System 2026</p>
+        </body>
+        </html>
+        

@@ -1,0 +1,16 @@
+=== Electricity Price Prediction Results (2024) ===
+Dataset: Full Year 2024 (Sequence 1)
+Test Period: Oct 19 - Dec 31, 2024
+
+--- Model Performance ---
+            Model      RMSE       MAE
+Naive_persistence 66.115130 37.987251
+  Naive_naive_24h 91.334609 50.654675
+   Naive_naive_7d 95.305901 51.577094
+          XGBoost 67.359296 36.447092
+             LSTM 90.879028 59.078434
+
+--- Interpretation ---
+1. Naive Persistence (Lag 24) remains the strong baseline due to high volatility.
+2. XGBoost (Cyclical Only) performs best among ML models.
+3. The high RMSE (~65-75) reflects the extreme variance in late 2024 prices.

@@ -1,4 +1,17 @@
+# Python
 .venv/
 __pycache__/
+*.pyc
+*.pyo
+
+# OS
 .DS_Store
-*.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# Logs
+*.log
+training_logs/
+
+# Large raw data files
+data/weather/
+data/*.xls

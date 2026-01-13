@@ -1,0 +1,319 @@
+{
+    "study_metadata": {
+        "timestamp": "2026-01-08T17:55:47.611672",
+        "n_trials": 20,
+        "best_trial_number": 5,
+        "best_rmse": 73.26651000976562,
+        "best_params": {
+            "units_1": 256,
+            "units_2": 64,
+            "units_3": 64,
+            "dropout": 0.21974174958322762,
+            "learning_rate": 0.000429284069073502,
+            "batch_size": 32,
+            "window_size": 48
+        }
+    },
+    "all_trials": [
+        {
+            "trial_number": 0,
+            "rmse": 81.35205078125,
+            "params": {
+                "units_1": 128,
+                "units_2": 64,
+                "units_3": 16,
+                "dropout": 0.2327456268292272,
+                "learning_rate": 2.4526801953363754e-05,
+                "batch_size": 32,
+                "window_size": 168
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 369.735124
+        },
+        {
+            "trial_number": 1,
+            "rmse": 75.84898376464844,
+            "params": {
+                "units_1": 192,
+                "units_2": 32,
+                "units_3": 32,
+                "dropout": 0.11789362247240227,
+                "learning_rate": 1.7058054543223455e-05,
+                "batch_size": 32,
+                "window_size": 72
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 197.510563
+        },
+        {
+            "trial_number": 2,
+            "rmse": 83.66584777832031,
+            "params": {
+                "units_1": 128,
+                "units_2": 32,
+                "units_3": 48,
+                "dropout": 0.2253806029762223,
+                "learning_rate": 7.869607677835999e-05,
+                "batch_size": 32,
+                "window_size": 168
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 324.133777
+        },
+        {
+            "trial_number": 3,
+            "rmse": 85.87488555908203,
+            "params": {
+                "units_1": 64,
+                "units_2": 64,
+                "units_3": 64,
+                "dropout": 0.3744903305418029,
+                "learning_rate": 0.004123372413299093,
+                "batch_size": 16,
+                "window_size": 168
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 448.55768
+        },
+        {
+            "trial_number": 4,
+            "rmse": 79.54698944091797,
+            "params": {
+                "units_1": 192,
+                "units_2": 32,
+                "units_3": 64,
+                "dropout": 0.1909381857433604,
+                "learning_rate": 0.00016553361128873089,
+                "batch_size": 64,
+                "window_size": 72
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 127.860073
+        },
+        {
+            "trial_number": 5,
+            "rmse": 73.26651000976562,
+            "params": {
+                "units_1": 256,
+                "units_2": 64,
+                "units_3": 64,
+                "dropout": 0.21974174958322762,
+                "learning_rate": 0.000429284069073502,
+                "batch_size": 32,
+                "window_size": 48
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 193.306482
+        },
+        {
+            "trial_number": 6,
+            "rmse": 74.66909790039062,
+            "params": {
+                "units_1": 128,
+                "units_2": 64,
+                "units_3": 64,
+                "dropout": 0.2522866047027885,
+                "learning_rate": 0.0020162089802057926,
+                "batch_size": 32,
+                "window_size": 72
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 143.846995
+        },
+        {
+            "trial_number": 7,
+            "rmse": 80.7286148071289,
+            "params": {
+                "units_1": 192,
+                "units_2": 96,
+                "units_3": 64,
+                "dropout": 0.39924966172806114,
+                "learning_rate": 4.543512552706788e-05,
+                "batch_size": 16,
+                "window_size": 48
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 1202.094346
+        },
+        {
+            "trial_number": 8,
+            "rmse": 78.65760040283203,
+            "params": {
+                "units_1": 192,
+                "units_2": 64,
+                "units_3": 48,
+                "dropout": 0.19892700050944043,
+                "learning_rate": 0.0025963224410013525,
+                "batch_size": 32,
+                "window_size": 168
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 396.218112
+        },
+        {
+            "trial_number": 9,
+            "rmse": 84.41879272460938,
+            "params": {
+                "units_1": 256,
+                "units_2": 96,
+                "units_3": 64,
+                "dropout": 0.34101763824450604,
+                "learning_rate": 0.001525109560103871,
+                "batch_size": 32,
+                "window_size": 168
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 546.368816
+        },
+        {
+            "trial_number": 10,
+            "rmse": 78.71975708007812,
+            "params": {
+                "units_1": 256,
+                "units_2": 128,
+                "units_3": 32,
+                "dropout": 0.2884998465169317,
+                "learning_rate": 0.0006052904805493283,
+                "batch_size": 64,
+                "window_size": 48
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 121.40841
+        },
+        {
+            "trial_number": 11,
+            "rmse": 78.0230484008789,
+            "params": {
+                "units_1": 64,
+                "units_2": 96,
+                "units_3": 48,
+                "dropout": 0.2822065367873984,
+                "learning_rate": 0.0005679125336755493,
+                "batch_size": 32,
+                "window_size": 72
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 132.925451
+        },
+        {
+            "trial_number": 12,
+            "rmse": 84.57305908203125,
+            "params": {
+                "units_1": 128,
+                "units_2": 64,
+                "units_3": 64,
+                "dropout": 0.1415743238316554,
+                "learning_rate": 0.0009937400875129096,
+                "batch_size": 32,
+                "window_size": 48
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 99.579029
+        },
+        {
+            "trial_number": 13,
+            "rmse": 80.33626556396484,
+            "params": {
+                "units_1": 256,
+                "units_2": 128,
+                "units_3": 48,
+                "dropout": 0.2881907719039472,
+                "learning_rate": 0.006745217743359537,
+                "batch_size": 32,
+                "window_size": 48
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 164.737936
+        },
+        {
+            "trial_number": 14,
+            "rmse": 80.33602905273438,
+            "params": {
+                "units_1": 128,
+                "units_2": 64,
+                "units_3": 64,
+                "dropout": 0.16788618559242702,
+                "learning_rate": 0.0002101992813907774,
+                "batch_size": 64,
+                "window_size": 72
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 105.034261
+        },
+        {
+            "trial_number": 15,
+            "rmse": 75.15316772460938,
+            "params": {
+                "units_1": 64,
+                "units_2": 96,
+                "units_3": 32,
+                "dropout": 0.259229168909353,
+                "learning_rate": 0.00035779357450947306,
+                "batch_size": 16,
+                "window_size": 48
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 77.05232
+        },
+        {
+            "trial_number": 16,
+            "rmse": 77.73005676269531,
+            "params": {
+                "units_1": 256,
+                "units_2": 32,
+                "units_3": 16,
+                "dropout": 0.32455739002528616,
+                "learning_rate": 0.0016603028071162254,
+                "batch_size": 32,
+                "window_size": 72
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 119.231921
+        },
+        {
+            "trial_number": 17,
+            "rmse": 83.02942657470703,
+            "params": {
+                "units_1": 192,
+                "units_2": 64,
+                "units_3": 48,
+                "dropout": 0.21558544615144282,
+                "learning_rate": 0.004546651308822619,
+                "batch_size": 32,
+                "window_size": 48
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 81.350965
+        },
+        {
+            "trial_number": 18,
+            "rmse": 74.93848419189453,
+            "params": {
+                "units_1": 128,
+                "units_2": 96,
+                "units_3": 64,
+                "dropout": 0.2573260412881786,
+                "learning_rate": 9.850460714037555e-05,
+                "batch_size": 16,
+                "window_size": 72
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 292.943079
+        },
+        {
+            "trial_number": 19,
+            "rmse": 79.35636138916016,
+            "params": {
+                "units_1": 64,
+                "units_2": 32,
+                "units_3": 48,
+                "dropout": 0.17178876426998724,
+                "learning_rate": 0.0009068214539669134,
+                "batch_size": 64,
+                "window_size": 48
+            },
+            "state": "COMPLETE",
+            "duration_seconds": 31.650905
+        }
+    ]
+}

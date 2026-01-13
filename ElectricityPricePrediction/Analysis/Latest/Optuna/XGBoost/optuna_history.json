@@ -1,0 +1,67 @@
+{
+    "study_metadata": {
+        "n_trials": 3,
+        "best_rmse": 34.22188972492446,
+        "best_params": {
+            "n_estimators": 900,
+            "learning_rate": 0.1261252237763108,
+            "max_depth": 8,
+            "min_child_weight": 10,
+            "subsample": 0.6848843878691244,
+            "colsample_bytree": 0.5451432339065927
+        },
+        "baseline_rmse": 36.56620131980975,
+        "baseline_params": {
+            "objective": "reg:squarederror",
+            "n_estimators": 500,
+            "learning_rate": 0.1,
+            "max_depth": 6,
+            "random_state": 42
+        },
+        "improvement": {
+            "rmse_delta": 2.3443115948852906,
+            "rmse_pct": 6.411143379050585
+        }
+    },
+    "all_trials": [
+        {
+            "trial_number": 0,
+            "rmse": 35.86928868369335,
+            "params": {
+                "n_estimators": 1700,
+                "learning_rate": 0.25670189559727385,
+                "max_depth": 9,
+                "min_child_weight": 6,
+                "subsample": 0.6004119811500007,
+                "colsample_bytree": 0.6830991487417781
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "trial_number": 1,
+            "rmse": 35.74180775479858,
+            "params": {
+                "n_estimators": 1200,
+                "learning_rate": 0.049568193239997956,
+                "max_depth": 3,
+                "min_child_weight": 8,
+                "subsample": 0.6265840980822673,
+                "colsample_bytree": 0.6660111972654925
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "trial_number": 2,
+            "rmse": 34.22188972492446,
+            "params": {
+                "n_estimators": 900,
+                "learning_rate": 0.1261252237763108,
+                "max_depth": 8,
+                "min_child_weight": 10,
+                "subsample": 0.6848843878691244,
+                "colsample_bytree": 0.5451432339065927
+            },
+            "state": "COMPLETE"
+        }
+    ]
+}

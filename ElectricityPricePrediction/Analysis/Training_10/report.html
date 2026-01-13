@@ -1,0 +1,119 @@
+
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+                h1 { color: #333; }
+                table { border-collapse: collapse; width: 100%; margin: 20px 0; background: white; }
+                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                th { background-color: #4CAF50; color: white; }
+                .plot-container { display: flex; flex-wrap: wrap; gap: 20px; }
+                .plot { max-width: 48%; border: 1px solid #ccc; }
+                .summary { background: #e7f3fe; padding: 15px; border-left: 6px solid #2196F3; margin: 20px 0; }
+            </style>
+            <title>Forecast Report - 20260113_193936</title>
+        </head>
+        <body>
+            <h1>Forecast Run Report: 20260113_193936</h1>
+            <div class="summary">
+                <strong>Run Timestamp:</strong> 2026-01-13T20:13:09.382008<br>
+                <strong>Status:</strong> Completed Successfully
+            </div>
+
+            <h2>Model Metrics</h2>
+            <table border="1" class="dataframe table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Model</th>
+      <th>RMSE</th>
+      <th>MAE</th>
+      <th>N_points</th>
+      <th>Delta_RMSE_vs_Naive</th>
+      <th>Delta_Pct_vs_Naive</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Naive_persistence</td>
+      <td>66.105187</td>
+      <td>38.025622</td>
+      <td>1727</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <td>Naive_naive_24h</td>
+      <td>91.311848</td>
+      <td>50.700614</td>
+      <td>1727</td>
+      <td>25.206661</td>
+      <td>38.131139</td>
+    </tr>
+    <tr>
+      <td>Naive_naive_7d</td>
+      <td>95.235195</td>
+      <td>51.550683</td>
+      <td>1727</td>
+      <td>29.130008</td>
+      <td>44.066145</td>
+    </tr>
+    <tr>
+      <td>XGBoost</td>
+      <td>66.932998</td>
+      <td>36.280758</td>
+      <td>1703</td>
+      <td>0.827810</td>
+      <td>1.252262</td>
+    </tr>
+    <tr>
+      <td>XGB_LagCyclical</td>
+      <td>74.596909</td>
+      <td>40.904634</td>
+      <td>1703</td>
+      <td>8.491721</td>
+      <td>12.845772</td>
+    </tr>
+    <tr>
+      <td>LSTM</td>
+      <td>40.040259</td>
+      <td>16.689949</td>
+      <td>1727</td>
+      <td>-26.064928</td>
+      <td>-39.429475</td>
+    </tr>
+  </tbody>
+</table>
+
+            <h2>Forecast Analysis</h2>
+            <div class="plot-container">
+                <div>
+                    <h3>Forecasting</h3>
+                    <img src="Plots/Forecasting/comprehensive_analysis.png" class="plot" style="max-width: 100%;">
+                </div>
+                <div>
+                    <h3>Error Analysis</h3>
+                    <img src="Plots/Error_Analysis/forecasting_insights.png" class="plot" style="max-width: 100%;">
+                </div>
+                <div>
+                    <h3>Features</h3>
+                    <img src="Plots/Features/feature_importance.png" class="plot" style="max-width: 100%;">
+                </div>
+            </div>
+            
+            <h2>Sequential Model Logs</h2>
+            <p>Persistent logs for each model are saved in <code>Analysis/Model_History/&lt;ModelName&gt;/N.json</code></p>
+        
+            <h2>Optuna Tuning Summary</h2>
+            <p><strong>Baseline RMSE:</strong> 36.56620131980975</p>
+            <p><strong>Best RMSE:</strong> 33.929016802477825</p>
+            <p style="color: green;"><strong>Improvement:</strong> 7.21%</p>
+            <div class="plot-container">
+                <img src="Optuna/XGBoost/Plots/trial_progression.png" class="plot">
+                <img src="Optuna/XGBoost/Plots/hyperparameter_importance.png" class="plot">
+                <img src="Optuna/XGBoost/Plots/optimization_timeline.png" class="plot">
+            </div>
+            
+            <p style="margin-top: 50px; color: #888;">&copy; Antigravity Forecasting System 2026</p>
+        </body>
+        </html>
+        

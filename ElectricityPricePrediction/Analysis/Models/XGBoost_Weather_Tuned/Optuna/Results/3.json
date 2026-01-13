@@ -1,0 +1,41 @@
+[
+    {
+        "objective": 35.86928868369335,
+        "params": {
+            "n_estimators": 1700,
+            "learning_rate": 0.25670189559727385,
+            "max_depth": 9,
+            "min_child_weight": 6,
+            "subsample": 0.6004119811500007,
+            "colsample_bytree": 0.6830991487417781
+        },
+        "trial": 0,
+        "uid": "xgb_tune_20260113_210557_0"
+    },
+    {
+        "objective": 35.74180775479858,
+        "params": {
+            "n_estimators": 1200,
+            "learning_rate": 0.049568193239997956,
+            "max_depth": 3,
+            "min_child_weight": 8,
+            "subsample": 0.6265840980822673,
+            "colsample_bytree": 0.6660111972654925
+        },
+        "trial": 1,
+        "uid": "xgb_tune_20260113_210557_1"
+    },
+    {
+        "objective": 34.22188972492446,
+        "params": {
+            "n_estimators": 900,
+            "learning_rate": 0.1261252237763108,
+            "max_depth": 8,
+            "min_child_weight": 10,
+            "subsample": 0.6848843878691244,
+            "colsample_bytree": 0.5451432339065927
+        },
+        "trial": 2,
+        "uid": "xgb_tune_20260113_210557_2"
+    }
+]

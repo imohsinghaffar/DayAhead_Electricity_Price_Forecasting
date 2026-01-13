@@ -1,0 +1,93 @@
+{
+    "study_metadata": {
+        "n_trials": 5,
+        "best_rmse": 42.135788019294516,
+        "best_params": {
+            "window_size": 120,
+            "units_1": 64,
+            "units_2": 128,
+            "units_3": 32,
+            "dropout": 0.1,
+            "learning_rate": 0.0033216316987691222,
+            "batch_size": 16
+        },
+        "best_trial_number": 0
+    },
+    "all_trials": [
+        {
+            "trial_number": 0,
+            "rmse": 42.135788019294516,
+            "params": {
+                "window_size": 120,
+                "units_1": 64,
+                "units_2": 128,
+                "units_3": 32,
+                "dropout": 0.1,
+                "learning_rate": 0.0033216316987691222,
+                "batch_size": 16
+            },
+            "epochs_trained": 17,
+            "best_val_loss": 0.21299347281455994
+        },
+        {
+            "trial_number": 1,
+            "rmse": 62.33160645606025,
+            "params": {
+                "window_size": 120,
+                "units_1": 128,
+                "units_2": 256,
+                "units_3": 16,
+                "dropout": 0.1,
+                "learning_rate": 0.00030380814624610494,
+                "batch_size": 64
+            },
+            "epochs_trained": 11,
+            "best_val_loss": 0.44195616245269775
+        },
+        {
+            "trial_number": 2,
+            "rmse": 49.522530406621044,
+            "params": {
+                "window_size": 96,
+                "units_1": 64,
+                "units_2": 256,
+                "units_3": 32,
+                "dropout": 0.2,
+                "learning_rate": 0.0034766181516278053,
+                "batch_size": 32
+            },
+            "epochs_trained": 11,
+            "best_val_loss": 0.25172948837280273
+        },
+        {
+            "trial_number": 3,
+            "rmse": 61.00799712644641,
+            "params": {
+                "window_size": 120,
+                "units_1": 32,
+                "units_2": 256,
+                "units_3": 16,
+                "dropout": 0.1,
+                "learning_rate": 0.0006057243063423675,
+                "batch_size": 64
+            },
+            "epochs_trained": 10,
+            "best_val_loss": 0.4070044755935669
+        },
+        {
+            "trial_number": 4,
+            "rmse": 63.13485816436335,
+            "params": {
+                "window_size": 72,
+                "units_1": 128,
+                "units_2": 64,
+                "units_3": 16,
+                "dropout": 0.2,
+                "learning_rate": 0.0001027258637857256,
+                "batch_size": 32
+            },
+            "epochs_trained": 9,
+            "best_val_loss": 0.48629114031791687
+        }
+    ]
+}

@@ -1,0 +1,8 @@
+{
+    "Model": "Naive_naive_24h",
+    "RMSE": 91.31184819912606,
+    "MAE": 50.70061378112334,
+    "N_points": 1727,
+    "Delta_RMSE_vs_Naive": 25.206660929437263,
+    "Delta_Pct_vs_Naive": 38.13113912922121
+}

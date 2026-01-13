@@ -1,0 +1,9 @@
+{
+    "units_1": 64,
+    "units_2": 128,
+    "units_3": 16,
+    "dropout": 0.2,
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "window_size": 72
+}

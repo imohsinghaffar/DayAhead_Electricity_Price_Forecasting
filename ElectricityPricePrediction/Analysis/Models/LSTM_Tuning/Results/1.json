@@ -1,0 +1,72 @@
+[
+    {
+        "objective": 42.135788019294516,
+        "params": {
+            "window_size": 120,
+            "units_1": 64,
+            "units_2": 128,
+            "units_3": 32,
+            "dropout": 0.1,
+            "learning_rate": 0.0033216316987691222,
+            "batch_size": 16
+        },
+        "trial": 0,
+        "uid": "lstm_tune_20260113_193936_0"
+    },
+    {
+        "objective": 62.33160645606025,
+        "params": {
+            "window_size": 120,
+            "units_1": 128,
+            "units_2": 256,
+            "units_3": 16,
+            "dropout": 0.1,
+            "learning_rate": 0.00030380814624610494,
+            "batch_size": 64
+        },
+        "trial": 1,
+        "uid": "lstm_tune_20260113_193936_1"
+    },
+    {
+        "objective": 49.522530406621044,
+        "params": {
+            "window_size": 96,
+            "units_1": 64,
+            "units_2": 256,
+            "units_3": 32,
+            "dropout": 0.2,
+            "learning_rate": 0.0034766181516278053,
+            "batch_size": 32
+        },
+        "trial": 2,
+        "uid": "lstm_tune_20260113_193936_2"
+    },
+    {
+        "objective": 61.00799712644641,
+        "params": {
+            "window_size": 120,
+            "units_1": 32,
+            "units_2": 256,
+            "units_3": 16,
+            "dropout": 0.1,
+            "learning_rate": 0.0006057243063423675,
+            "batch_size": 64
+        },
+        "trial": 3,
+        "uid": "lstm_tune_20260113_193936_3"
+    },
+    {
+        "objective": 63.13485816436335,
+        "params": {
+            "window_size": 72,
+            "units_1": 128,
+            "units_2": 64,
+            "units_3": 16,
+            "dropout": 0.2,
+            "learning_rate": 0.0001027258637857256,
+            "batch_size": 32
+        },
+        "trial": 4,
+        "uid": "lstm_tune_20260113_193936_4"
+    }
+]

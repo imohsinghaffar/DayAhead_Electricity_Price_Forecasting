@@ -1,0 +1,8 @@
+{
+    "Model": "XGBoost",
+    "RMSE": 66.23760921160795,
+    "MAE": 34.665210816478,
+    "N_points": 1703,
+    "Delta_RMSE_vs_Naive": 0.1324219419191479,
+    "Delta_Pct_vs_Naive": 0.2003200465629228
+}

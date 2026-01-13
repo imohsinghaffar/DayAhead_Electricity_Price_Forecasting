@@ -1,0 +1,8 @@
+{
+    "Model": "Naive_persistence",
+    "RMSE": 66.1051872696888,
+    "MAE": 38.02562246670527,
+    "N_points": 1727,
+    "Delta_RMSE_vs_Naive": 0.0,
+    "Delta_Pct_vs_Naive": 0.0
+}

@@ -1,0 +1,8 @@
+{
+    "Model": "XGB_LagCyclical",
+    "RMSE": 74.59690860442943,
+    "MAE": 40.90463350796658,
+    "N_points": 1703,
+    "Delta_RMSE_vs_Naive": 8.491721334740632,
+    "Delta_Pct_vs_Naive": 12.845771543006187
+}
