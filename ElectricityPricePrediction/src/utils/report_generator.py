@@ -89,8 +89,9 @@ class ReportGenerator:
             """
 
         html_content += """
-            <p style="margin-top: 50px; color: #888;">&copy; Antigravity Forecasting System 2026</p>
+            <p style="margin-top: 50px; color: #888;">&copy; 2026 Developed and Designed by Mohsin Ghaffar | Day-Ahead Electricity Price Forecasting</p>
         </body>
+
         </html>
         """
         

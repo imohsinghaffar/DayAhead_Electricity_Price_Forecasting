@@ -20,3 +20,6 @@ The core implementation and results are located in the [**ElectricityPricePredic
 - **`Analysis/`**: Comprehensive training history and visual analysis.
 
 For detailed installation and usage instructions, please refer to the [**Detailed README**](./ElectricityPricePrediction/README.md).
+
+---
+**Developed and Designed by Mohsin Ghaffar**

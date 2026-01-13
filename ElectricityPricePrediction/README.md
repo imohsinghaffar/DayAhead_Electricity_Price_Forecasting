@@ -59,4 +59,5 @@ Use the links below to view interactive charts (Zoom, Hover, Pan) directly witho
 
 
 ## ✍️ Author
-Electricity Price Prediction Project Refactor
+**Designed and Developed by Mohsin Ghaffar**
+University of Würzburg - Day-Ahead Electricity Price Forecasting Project
