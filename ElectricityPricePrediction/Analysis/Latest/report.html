@@ -11,12 +11,12 @@
                 .plot { max-width: 48%; border: 1px solid #ccc; }
                 .summary { background: #e7f3fe; padding: 15px; border-left: 6px solid #2196F3; margin: 20px 0; }
             </style>
-            <title>Forecast Report - 20260120_231738</title>
+            <title>Forecast Report - 20260120_234423</title>
         </head>
         <body>
-            <h1>Forecast Run Report: 20260120_231738</h1>
+            <h1>Forecast Run Report: 20260120_234423</h1>
             <div class="summary">
-                <strong>Run Timestamp:</strong> 2026-01-20T23:26:24.931409<br>
+                <strong>Run Timestamp:</strong> 2026-01-21T00:32:35.413770<br>
                 <strong>Status:</strong> Completed Successfully
             </div>
 
@@ -59,11 +59,11 @@
     </tr>
     <tr>
       <td>XGBoost</td>
-      <td>66.163782</td>
-      <td>34.930399</td>
+      <td>66.076011</td>
+      <td>34.292047</td>
       <td>1703</td>
-      <td>0.058594</td>
-      <td>0.088638</td>
+      <td>-0.029176</td>
+      <td>-0.044135</td>
     </tr>
     <tr>
       <td>XGB_LagCyclical</td>
@@ -75,11 +75,11 @@
     </tr>
     <tr>
       <td>LSTM</td>
-      <td>38.433065</td>
-      <td>16.186450</td>
+      <td>38.387216</td>
+      <td>16.900106</td>
       <td>1727</td>
-      <td>-27.672122</td>
-      <td>-41.860743</td>
+      <td>-27.717971</td>
+      <td>-41.930100</td>
     </tr>
   </tbody>
 </table>
@@ -103,6 +103,16 @@
             <h2>Sequential Model Logs</h2>
             <p>Persistent logs for each model are saved in <code>Analysis/Model_History/&lt;ModelName&gt;/N.json</code></p>
         
+            <h2>Optuna Tuning Summary</h2>
+            <p><strong>Baseline RMSE:</strong> 36.71165338284098</p>
+            <p><strong>Best RMSE:</strong> 33.66253889340476</p>
+            <p style="color: green;"><strong>Improvement:</strong> 8.31%</p>
+            <div class="plot-container">
+                <img src="Optuna/XGBoost/Plots/trial_progression.png" class="plot">
+                <img src="Optuna/XGBoost/Plots/hyperparameter_importance.png" class="plot">
+                <img src="Optuna/XGBoost/Plots/optimization_timeline.png" class="plot">
+            </div>
+            
             <p style="margin-top: 50px; color: #888;">&copy; 2026 Developed and Designed by Mohsin Ghaffar | Day-Ahead Electricity Price Forecasting</p>
         </body>
 

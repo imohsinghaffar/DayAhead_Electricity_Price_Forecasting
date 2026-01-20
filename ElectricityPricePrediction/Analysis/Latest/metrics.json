@@ -25,11 +25,11 @@
     },
     {
         "Model":"XGBoost",
-        "RMSE":66.1637817444,
-        "MAE":34.9303986278,
+        "RMSE":66.0760114881,
+        "MAE":34.2920466067,
         "N_points":1703,
-        "Delta_RMSE_vs_Naive":0.0585944747,
-        "Delta_Pct_vs_Naive":0.0886382402
+        "Delta_RMSE_vs_Naive":-0.0291757816,
+        "Delta_Pct_vs_Naive":-0.044135389
     },
     {
         "Model":"XGB_LagCyclical",
@@ -41,10 +41,10 @@
     },
     {
         "Model":"LSTM",
-        "RMSE":38.4330650461,
-        "MAE":16.1864497149,
+        "RMSE":38.3872162892,
+        "MAE":16.9001060397,
         "N_points":1727,
-        "Delta_RMSE_vs_Naive":-27.6721222235,
-        "Delta_Pct_vs_Naive":-41.8607425022
+        "Delta_RMSE_vs_Naive":-27.7179709804,
+        "Delta_Pct_vs_Naive":-41.9300997777
     }
 ]
