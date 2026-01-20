@@ -14,8 +14,9 @@ class HistoricalDataLoader:
     def __init__(self, data_dir=None):
         self.src_dir = Path(__file__).parent.parent
         self.project_root = self.src_dir.parent
-        self.data_dir = Path(data_dir) if data_dir else self.project_root / "Data2"
-        self.data_dir_2024 = self.project_root / "data"
+        self.data_dir = Path(data_dir) if data_dir else self.project_root / "data" / "Data2"  # Fixed path
+        self.data_dir_main = self.project_root / "data"
+
         
     def load_full_dataset(self):
         """Main method: Load 2019-2023 archive + 2024 recent data."""
@@ -26,8 +27,9 @@ class HistoricalDataLoader:
         
         # 2. Recent Data (2024)
         from utils.data_loader_2024 import DataLoader2024
-        loader_24 = DataLoader2024(data_file=self.data_dir_2024 / "GUI_ENERGY_PRICES_2024.csv")
+        loader_24 = DataLoader2024(data_file=self.data_dir_main / "GUI_ENERGY_PRICES_2024.csv")
         recent_df = loader_24.load_data()
+
         
         # Combine (archive has only Price initially, recent_df has features)
         # We only need 'Price' from both to start features from scratch OR align manually
@@ -88,8 +90,9 @@ class HistoricalDataLoader:
         fuel_configs = [
             (self.data_dir / "DCOILBRENTEU.csv", "Oil_Price"),
             (self.data_dir / "PCOALAUUSDM.csv", "Coal_Price"),
-            (self.data_dir_2024 / "TTF_Natural_Gas.csv", "Gas_Price")
+            (self.data_dir_main / "MonthlyGasPrice.csv", "Gas_Price")
         ]
+
         
         for path, col_name in fuel_configs:
             if not path.exists():
