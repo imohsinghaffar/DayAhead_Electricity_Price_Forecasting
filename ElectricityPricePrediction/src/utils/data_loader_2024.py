@@ -89,13 +89,14 @@ class DataLoader2024:
     def _merge_fuel_prices(self, df):
         """Load and align Daily Oil and Monthly Coal/Gas using merge_asof."""
         data_dir = self.project_root / "data"
-        data2_dir = self.project_root / "Data2"
+        data2_dir = self.project_root / "data" / "Data2"  # Fixed path
         
         fuel_configs = [
             (data2_dir / "DCOILBRENTEU.csv", "Oil_Price"),
-            (data_dir / "CoalPrices.csv", "Coal_Price"),
+            (data2_dir / "PCOALAUUSDM.csv", "Coal_Price"),  # Use more complete coal data
             (data_dir / "MonthlyGasPrice.csv", "Gas_Price")
         ]
+
         
         for path, col_name in fuel_configs:
             if not path.exists():
