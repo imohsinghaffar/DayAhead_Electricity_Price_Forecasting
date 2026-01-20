@@ -161,15 +161,39 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Electricity Price Forecast Runner (A-Z Refactor)")
     parser.add_argument("--test_start", type=str, help="Start date for test set (YYYY-MM-DD)")
     parser.add_argument("--ablation", action="store_true", help="Run ablation study on features")
-    parser.add_argument("--tune_xgb", action="store_true", help="Run Optuna tuning for XGBoost")
-    parser.add_argument("--tune_lstm", action="store_true", help="Run Optuna tuning for LSTM")
-    parser.add_argument("--n_trials", type=int, default=50, help="Number of Optuna trials for tuning")
-    parser.add_argument("--use_historical", action="store_true", help="Load 2019-2024 historical data")
-    parser.add_argument("--use_weather", action="store_true", help="Include German DWD weather data")
-    parser.add_argument("--probabilistic", action="store_true", help="Use Probabilistic LSTM (Uncertainty)")
-    parser.add_argument("--visualize_optuna", action="store_true", help="Generate Optuna plots")
+    
+    # === TUNING (Default ON) ===
+    parser.add_argument("--tune_xgb", action="store_true", default=True, help="Run Optuna tuning for XGBoost (default: ON)")
+    parser.add_argument("--tune_lstm", action="store_true", default=True, help="Run Optuna tuning for LSTM (default: ON)")
+    parser.add_argument("--skip_tune", action="store_true", help="Skip all Optuna tuning (faster runs)")
+    parser.add_argument("--n_trials", type=int, default=10, help="Number of Optuna trials (default: 10)")
+    
+    # === DATA OPTIONS ===
+    parser.add_argument("--use_historical", action="store_true", help="Load 2019-2024 historical data (default: 2024 only)")
+    parser.add_argument("--use_weather", action="store_true", default=True, help="Include German DWD weather data (default: ON)")
+    parser.add_argument("--skip_weather", action="store_true", help="Skip weather data integration")
+    
+    # === MODEL OPTIONS ===
+    parser.add_argument("--probabilistic", action="store_true", default=True, help="Use Probabilistic LSTM (default: ON)")
+    parser.add_argument("--standard_lstm", action="store_true", help="Use standard LSTM instead of probabilistic")
+    
+    # === VISUALIZATION ===
+    parser.add_argument("--visualize_optuna", action="store_true", default=True, help="Generate Optuna plots (default: ON)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
-    return parser.parse_args()
+    
+    args = parser.parse_args()
+    
+    # Handle skip flags
+    if args.skip_tune:
+        args.tune_xgb = False
+        args.tune_lstm = False
+    if args.skip_weather:
+        args.use_weather = False
+    if args.standard_lstm:
+        args.probabilistic = False
+        
+    return args
+
 
 def run_ablation(df, target_col='Price'):
     logger.info("Starting Feature Ablation Study...")
