@@ -1,0 +1,16 @@
+# Mark generated HTML and output files as generated/vendored
+# This tells GitHub to exclude them from language statistics
+
+# Interactive HTML plots and reports
+Analysis/**/*.html linguist-generated=true
+Analysis/**/*.json linguist-generated=true
+
+# Jupyter notebooks (they contain HTML output internally)
+*.ipynb linguist-generated=true
+
+# Data files
+data/**/*.csv linguist-vendored=true
+data/**/*.xls linguist-vendored=true
+
+# Mark Python as the primary language
+src/**/*.py linguist-detectable=true
