@@ -1,18 +1,19 @@
-# Mark ONLY the generated HTML reports and output files
-# Keep Python, Jupyter, and other code files visible in stats
+# GitHub Language Statistics Configuration
+# Only show actual source code, hide generated outputs
 
-# Generated HTML reports and interactive plots (exclude from stats)
+# Generated HTML reports and interactive plots
 Analysis/**/report.html linguist-generated=true
 Analysis/**/Plots/**/*.html linguist-generated=true
 
-# Generated JSON results (exclude from stats)
-Analysis/**/metrics.json linguist-generated=true
-Analysis/**/optuna_history.json linguist-generated=true
-Analysis/**/**/Results/*.json linguist-generated=true
+# Generated JSON results
+Analysis/**/*.json linguist-generated=true
 
-# Keep Jupyter Notebooks visible (they ARE code)
-# *.ipynb linguist-detectable=true
+# Jupyter Notebooks (they contain lots of HTML/JSON output, not primary code)
+*.ipynb linguist-generated=true
 
-# Large data files (vendored, not code)
+# Large data files
 data/**/*.csv linguist-vendored=true
 data/**/*.xls linguist-vendored=true
+
+# Ensure Python is detectable as primary language
+*.py linguist-detectable=true
