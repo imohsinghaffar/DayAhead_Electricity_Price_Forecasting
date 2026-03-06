@@ -14,11 +14,12 @@ class MCDropout(Dropout):
         return super().call(inputs, training=True)
 
 class ProbabilisticLSTM:
-    def __init__(self, df, target_col='Price', feature_cols=None, window_size=72):
+    def __init__(self, df, target_col='Price', feature_cols=None, window_size=72, confidence_scaling=1.0):
         self.df = df.copy()
         self.target_col = target_col
         self.feature_cols = feature_cols or [c for c in df.columns if c != target_col]
         self.window_size = window_size
+        self.confidence_scaling = confidence_scaling
         self.scaler_X = StandardScaler()
         self.scaler_y = StandardScaler()
         self.model = None
@@ -142,10 +143,16 @@ class ProbabilisticLSTM:
         
         res = pd.DataFrame(index=test_indices)
         res['prediction'] = mc_preds.mean(axis=0).flatten()
-        res['uncertainty'] = mc_preds.std(axis=0).flatten()
-        res['P05'] = np.percentile(mc_preds, 5, axis=0).flatten()
+        
+        # Scaling the distance from mean to percentiles
+        mean_vals = res['prediction'].values.reshape(-1, 1)
+        p05_raw = np.percentile(mc_preds, 5, axis=0).flatten()
+        p95_raw = np.percentile(mc_preds, 95, axis=0).flatten()
+        
+        res['P05'] = res['prediction'] - (res['prediction'] - p05_raw) * self.confidence_scaling
+        res['P95'] = res['prediction'] + (p95_raw - res['prediction']) * self.confidence_scaling
+        res['uncertainty'] = (res['P95'] - res['P05']) / 4
         res['P50'] = np.percentile(mc_preds, 50, axis=0).flatten()
-        res['P95'] = np.percentile(mc_preds, 95, axis=0).flatten()
         
         return res
 
@@ -178,12 +185,18 @@ class ProbabilisticLSTM:
             step_preds = np.array(step_residuals) + naive_base
             
             s_mean = np.mean(step_preds)
+            p05_raw = np.percentile(step_preds, 5)
+            p95_raw = np.percentile(step_preds, 95)
+            
+            p05_final = s_mean - (s_mean - p05_raw) * self.confidence_scaling
+            p95_final = s_mean + (p95_raw - s_mean) * self.confidence_scaling
+            
             future_preds.append({
                 'prediction': s_mean, 
-                'uncertainty': np.std(step_preds),
-                'P05': np.percentile(step_preds, 5), 
+                'uncertainty': (p95_final - p05_final) / 4,
+                'P05': p05_final, 
                 'P50': np.percentile(step_preds, 50), 
-                'P95': np.percentile(step_preds, 95)
+                'P95': p95_final
             })
             
             # Update current_data for next autoregressive step

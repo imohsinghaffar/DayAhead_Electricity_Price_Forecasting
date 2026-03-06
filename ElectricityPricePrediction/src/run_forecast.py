@@ -88,7 +88,7 @@ def setup_directories(project_root):
 # Model name to technique-based folder mapping
 MODEL_MAP = {
     "LSTM": "LSTM_Residual_Learning",
-    "XGBoost": "XGBoost_Weather_Tuned",
+    "XGBoost": "XGBoost_Residual_Learning",
     "XGB_LagCyclical": "XGBoost_LagCyclical",
     "Naive_persistence": "Naive_Persistence",
     "Naive_naive_24h": "Naive_24h",
@@ -169,15 +169,18 @@ def parse_args():
     parser.add_argument("--n_trials", type=int, default=10, help="Number of Optuna trials (default: 10)")
     
     # === DATA OPTIONS ===
-    parser.add_argument("--use_historical", action="store_true", help="Load 2019-2024 historical data (default: 2024 only)")
+    parser.add_argument("--use_historical", action="store_true", default=True, help="Load 2019-2024 historical data (default: ON)")
+    parser.add_argument("--only_2024", action="store_true", help="Use only 2024 data (skip historical)")
     parser.add_argument("--use_weather", action="store_true", default=True, help="Include German DWD weather data (default: ON)")
     parser.add_argument("--skip_weather", action="store_true", help="Skip weather data integration")
+
     
     # === MODEL OPTIONS ===
     parser.add_argument("--probabilistic", action="store_true", default=True, help="Use Probabilistic LSTM (default: ON)")
     parser.add_argument("--standard_lstm", action="store_true", help="Use standard LSTM instead of probabilistic")
     
-    # === VISUALIZATION ===
+    # === VISUALIZATION & CALIBRATION ===
+    parser.add_argument("--confidence_scaling", type=float, default=1.0, help="Scaling factor for probabilistic intervals (e.g. 1.5 to hit 90% calibration)")
     parser.add_argument("--visualize_optuna", action="store_true", default=True, help="Generate Optuna plots (default: ON)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     
@@ -191,8 +194,11 @@ def parse_args():
         args.use_weather = False
     if args.standard_lstm:
         args.probabilistic = False
+    if args.only_2024:
+        args.use_historical = False
         
     return args
+
 
 
 def run_ablation(df, target_col='Price'):
@@ -318,9 +324,9 @@ def main():
     baseline_rmse = None
     
     # XGBoost
-    logger.info("Running XGBoost...")
+    logger.info("Running XGBoost (Residual Learning)...")
     from models.XGBoost.xgboost_model import XGBoostModel
-    xgb = XGBoostModel(df, target_col=target_col)
+    xgb = XGBoostModel(df, target_col=target_col, use_residuals=True, confidence_scaling=args.confidence_scaling)
     xgb.preprocess()
     train_end_idx = sum(xgb.valid_indices < split_date)
     
@@ -330,7 +336,14 @@ def main():
     else:
         xgb.train(train_end_idx=train_end_idx)
     
-    predictions['XGBoost'] = xgb.predict(start_date=split_date).reindex(predictions.index)
+    if args.probabilistic:
+        xgb_res = xgb.predict(start_date=split_date, probabilistic=True).reindex(predictions.index)
+        predictions['XGBoost'] = xgb_res['prediction']
+        predictions['XGBoost_P05'] = xgb_res['P05']
+        predictions['XGBoost_P95'] = xgb_res['P95']
+        predictions['XGBoost_uncertainty'] = xgb_res['uncertainty']
+    else:
+        predictions['XGBoost'] = xgb.predict(start_date=split_date).reindex(predictions.index)
 
     # XGBoost: Lag + Cyclical Experiment (Automatically because requested)
     logger.info("Running Lag + Cyclical XGBoost Experiment...")
@@ -351,7 +364,14 @@ def main():
         X_test_lc = xgb.X_scaled[idx:, lag_indices]
         preds_lc_scaled = xgb_lc.predict(X_test_lc)
         preds_lc_real = xgb.scaler_y.inverse_transform(preds_lc_scaled.reshape(-1, 1)).ravel()
-        predictions['XGB_LagCyclical'] = pd.Series(preds_lc_real, index=xgb.valid_indices[idx:]).reindex(predictions.index)
+        
+        if xgb.use_residuals:
+            # Reconstruct: Price(t+24) = Residual + Price(t)
+            base_prices = df.loc[xgb.valid_indices[idx:], target_col].values
+            preds_lc_final = preds_lc_real + base_prices
+            predictions['XGB_LagCyclical'] = pd.Series(preds_lc_final, index=xgb.valid_indices[idx:]).reindex(predictions.index)
+        else:
+            predictions['XGB_LagCyclical'] = pd.Series(preds_lc_real, index=xgb.valid_indices[idx:]).reindex(predictions.index)
     else:
         logger.warning("No lag/cyclical features found for XGB_LagCyclical experiment.")
 
@@ -370,7 +390,8 @@ def main():
         from models.LSTM.probabilistic_lstm import ProbabilisticLSTM
         lstm = ProbabilisticLSTM(
             df, target_col=target_col, 
-            window_size=best_lstm_params.get('window_size', 72)
+            window_size=best_lstm_params.get('window_size', 72),
+            confidence_scaling=args.confidence_scaling
         )
         # Override hyperparams with Optuna results
         lstm.dropout = best_lstm_params.get('dropout', 0.2)
@@ -383,15 +404,19 @@ def main():
         lstm_history = lstm.train(train_end_idx=split_idx)
         prob_results = lstm.predict(start_date=split_date)
         predictions['LSTM'] = prob_results['prediction'].values
+        predictions['LSTM_P05'] = prob_results['P05'].values
+        predictions['LSTM_P95'] = prob_results['P95'].values
         predictions['LSTM_uncertainty'] = prob_results['uncertainty'].values
         
     elif args.probabilistic:
-        logger.info("Running Probabilistic LSTM (Monte Carlo Dropout)...")
+        logger.info(f"Running Probabilistic LSTM (Monte Carlo Dropout, Scaling={args.confidence_scaling})...")
         from models.LSTM.probabilistic_lstm import ProbabilisticLSTM
-        lstm = ProbabilisticLSTM(df, target_col=target_col)
+        lstm = ProbabilisticLSTM(df, target_col=target_col, confidence_scaling=args.confidence_scaling)
         lstm_history = lstm.train(train_end_idx=split_idx)
         prob_results = lstm.predict(start_date=split_date)
         predictions['LSTM'] = prob_results['prediction'].values
+        predictions['LSTM_P05'] = prob_results['P05'].values
+        predictions['LSTM_P95'] = prob_results['P95'].values
         predictions['LSTM_uncertainty'] = prob_results['uncertainty'].values
     else:
         logger.info("Running Standard LSTM...")
@@ -411,7 +436,9 @@ def main():
     
     metrics = []
     # Evaluate all prediction columns
-    eval_cols = [c for c in predictions.columns if c not in ['Actual', 'LSTM_uncertainty', 'P05', 'P95']]
+    # Exclude technical/probabilistic columns from baseline scoring
+    exclude_cols = ['Actual', 'LSTM_uncertainty', 'XGBoost_uncertainty', 'P05', 'P95', 'LSTM_P05', 'LSTM_P95', 'XGBoost_P05', 'XGBoost_P95']
+    eval_cols = [c for c in predictions.columns if c not in exclude_cols]
     for col in eval_cols:
         rmse, mae, n_pts, d_rmse, d_pct = evaluate_preds(predictions['Actual'], predictions[col], col, baseline_rmse)
         metrics.append({
@@ -445,35 +472,46 @@ def main():
     # === COMPREHENSIVE TRAINING HISTORY ===
     training_history = {
         "run_id": RUN_ID,
-        "timestamp": datetime.now().isoformat(),
-        "models": {}
+        "timestamp": datetime.now().isoformat()
     }
     
+    models_history = {}
+    
     # LSTM History
-    if lstm_history:
-        training_history["models"]["LSTM"] = lstm_history
-        # Add final metrics
-        lstm_row = metrics_df[metrics_df['Model'] == 'LSTM'].iloc[0] if 'LSTM' in metrics_df['Model'].values else None
-        if lstm_row is not None:
-            training_history["models"]["LSTM"]["final_rmse"] = float(lstm_row['RMSE'])
-            training_history["models"]["LSTM"]["final_mae"] = float(lstm_row['MAE'])
+    lstm_data = {}
+    if lstm_history is not None:
+        lstm_data.update(lstm_history)
+        
+    # Add final metrics
+    lstm_row = metrics_df[metrics_df['Model'] == 'LSTM'].iloc[0] if 'LSTM' in metrics_df['Model'].values else None
+    if lstm_row is not None:
+        lstm_data["final_rmse"] = float(lstm_row['RMSE'])
+        lstm_data["final_mae"] = float(lstm_row['MAE'])
     
     # Add LSTM Optuna history if tuned
-    if lstm_optuna_history:
-        training_history["models"]["LSTM"]["optuna_history"] = lstm_optuna_history
+    if lstm_optuna_history is not None:
+        lstm_data["optuna_history"] = lstm_optuna_history
+        
+    if lstm_data:
+        models_history["LSTM"] = lstm_data
 
-    
     # XGBoost History
-    training_history["models"]["XGBoost"] = {
+    xgb_data = {
         "hyperparameters": xgb.model.get_params(),
         "tuned": args.tune_xgb
     }
-    if args.tune_xgb and 'xgb_history' in locals():
-        training_history["models"]["XGBoost"]["optuna_history"] = xgb_history
+    if args.tune_xgb and 'xgb_history' in locals() and xgb_history is not None:
+        xgb_data["optuna_history"] = xgb_history
+        
     xgb_row = metrics_df[metrics_df['Model'] == 'XGBoost'].iloc[0] if 'XGBoost' in metrics_df['Model'].values else None
     if xgb_row is not None:
-        training_history["models"]["XGBoost"]["final_rmse"] = float(xgb_row['RMSE'])
-        training_history["models"]["XGBoost"]["final_mae"] = float(xgb_row['MAE'])
+        xgb_data["final_rmse"] = float(xgb_row['RMSE'])
+        xgb_data["final_mae"] = float(xgb_row['MAE'])
+        
+    models_history["XGBoost"] = xgb_data
+    
+    # Combine
+    training_history["models"] = models_history
     
     # Save comprehensive training history
     # Clean NaN values from XGBoost params (NaN is not valid JSON)
@@ -505,7 +543,13 @@ def main():
     # XGBoost Future
     if 'XGBoost' in predictions.columns:
         logger.info("XGBoost 24h forecast...")
-        future_preds['XGBoost'] = xgb.predict_next_24h(df)
+        if args.probabilistic:
+            xgb_f = xgb.predict_next_24h(df, probabilistic=True)
+            future_preds['XGBoost'] = xgb_f['prediction'].values
+            future_preds['XGBoost_P05'] = xgb_f['P05'].values
+            future_preds['XGBoost_P95'] = xgb_f['P95'].values
+        else:
+            future_preds['XGBoost'] = xgb.predict_next_24h(df)
         
     # LSTM Future
     if 'LSTM' in predictions.columns:
@@ -514,8 +558,8 @@ def main():
         future_preds['LSTM'] = f_lstm['prediction'].values
         if 'uncertainty' in f_lstm.columns:
             future_preds['LSTM_uncertainty'] = f_lstm['uncertainty'].values
-            future_preds['P05'] = f_lstm['P05'].values
-            future_preds['P95'] = f_lstm['P95'].values
+            future_preds['LSTM_P05'] = f_lstm['P05'].values
+            future_preds['LSTM_P95'] = f_lstm['P95'].values
 
     future_preds.to_csv(LATEST_DIR / "forecast_next24.csv")
 
@@ -524,11 +568,24 @@ def main():
     from utils.enhanced_visualizations import (
         create_comprehensive_comparison, 
         create_forecasting_insights, 
-        create_feature_impact_analysis
+        create_feature_impact_analysis,
+        create_probabilistic_summary,
+        create_probabilistic_fan_chart,
+        plot_calibration_sensitivity,
+        create_spaghetti_plot,
+        create_density_plot
     )
     
     # Forecasting Plots
     create_comprehensive_comparison(predictions, metrics_df, output_dir=LATEST_DIR / "Plots" / "Forecasting")
+    
+    # Probabilistic Analysis (Uncertainty Width & Calibration)
+    if args.probabilistic:
+        create_probabilistic_summary(predictions, output_dir=LATEST_DIR / "Plots" / "Probabilistic")
+        create_probabilistic_fan_chart(predictions, future_preds, output_dir=LATEST_DIR / "Plots" / "Probabilistic")
+        plot_calibration_sensitivity(predictions, output_dir=LATEST_DIR / "Plots" / "Probabilistic")
+        create_spaghetti_plot(predictions, future_preds, output_dir=LATEST_DIR / "Plots" / "Probabilistic")
+        create_density_plot(future_preds, output_dir=LATEST_DIR / "Plots" / "Probabilistic")
     
     # Error Analysis Plots
     create_forecasting_insights(predictions, output_dir=LATEST_DIR / "Plots" / "Error_Analysis")
@@ -560,13 +617,15 @@ def main():
         
         # Save detailed tuning log for Model_History
         tuning_log = []
-        for t in optuna_hist['all_trials']:
-            tuning_log.append({
-                "objective": t['rmse'],
-                "params": t['params'],
-                "trial": t['trial_number'],
-                "uid": f"xgb_tune_{RUN_ID}_{t['trial_number']}"
-            })
+        if isinstance(optuna_hist, dict) and 'all_trials' in optuna_hist:
+            for t in optuna_hist['all_trials']:
+                if isinstance(t, dict):
+                    tuning_log.append({
+                        "objective": t.get('rmse', 0.0),
+                        "params": t.get('params', {}),
+                        "trial": t.get('trial_number', 0),
+                        "uid": f"xgb_tune_{RUN_ID}_{t.get('trial_number', 0)}"
+                    })
         save_model_result(PROJECT_ROOT / "Analysis", "XGBoost_Tuning", tuning_log)
 
     # LSTM Optuna Visuals (same structure as XGBoost)
@@ -584,13 +643,15 @@ def main():
         
         # Save detailed tuning log
         lstm_tuning_log = []
-        for t in lstm_optuna_history['all_trials']:
-            lstm_tuning_log.append({
-                "objective": t['rmse'],
-                "params": t['params'],
-                "trial": t['trial_number'],
-                "uid": f"lstm_tune_{RUN_ID}_{t['trial_number']}"
-            })
+        if isinstance(lstm_optuna_history, dict) and 'all_trials' in lstm_optuna_history:
+            for t in lstm_optuna_history['all_trials']:
+                if isinstance(t, dict):
+                    lstm_tuning_log.append({
+                        "objective": t.get('rmse', 0.0),
+                        "params": t.get('params', {}),
+                        "trial": t.get('trial_number', 0),
+                        "uid": f"lstm_tune_{RUN_ID}_{t.get('trial_number', 0)}"
+                    })
         save_model_result(PROJECT_ROOT / "Analysis", "LSTM_Tuning", lstm_tuning_log)
 
     # 7. Automated Report

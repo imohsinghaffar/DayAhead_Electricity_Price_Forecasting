@@ -11,12 +11,12 @@
                 .plot { max-width: 48%; border: 1px solid #ccc; }
                 .summary { background: #e7f3fe; padding: 15px; border-left: 6px solid #2196F3; margin: 20px 0; }
             </style>
-            <title>Forecast Report - 20260120_234423</title>
+            <title>Forecast Report - 20260301_204234</title>
         </head>
         <body>
-            <h1>Forecast Run Report: 20260120_234423</h1>
+            <h1>Forecast Run Report: 20260301_204234</h1>
             <div class="summary">
-                <strong>Run Timestamp:</strong> 2026-01-21T00:32:35.413770<br>
+                <strong>Run Timestamp:</strong> 2026-03-01T22:33:22.678160<br>
                 <strong>Status:</strong> Completed Successfully
             </div>
 
@@ -59,27 +59,27 @@
     </tr>
     <tr>
       <td>XGBoost</td>
-      <td>66.076011</td>
-      <td>34.292047</td>
+      <td>31.640586</td>
+      <td>26.509693</td>
       <td>1703</td>
-      <td>-0.029176</td>
-      <td>-0.044135</td>
+      <td>-34.464601</td>
+      <td>-52.136001</td>
     </tr>
     <tr>
       <td>XGB_LagCyclical</td>
-      <td>80.042840</td>
-      <td>47.300459</td>
+      <td>47.788057</td>
+      <td>34.564249</td>
       <td>1703</td>
-      <td>13.937653</td>
-      <td>21.084053</td>
+      <td>-18.317130</td>
+      <td>-27.709066</td>
     </tr>
     <tr>
       <td>LSTM</td>
-      <td>38.387216</td>
-      <td>16.900106</td>
+      <td>55.791231</td>
+      <td>26.023640</td>
       <td>1727</td>
-      <td>-27.717971</td>
-      <td>-41.930100</td>
+      <td>-10.313956</td>
+      <td>-15.602340</td>
     </tr>
   </tbody>
 </table>
@@ -104,9 +104,9 @@
             <p>Persistent logs for each model are saved in <code>Analysis/Model_History/&lt;ModelName&gt;/N.json</code></p>
         
             <h2>Optuna Tuning Summary</h2>
-            <p><strong>Baseline RMSE:</strong> 36.71165338284098</p>
-            <p><strong>Best RMSE:</strong> 33.66253889340476</p>
-            <p style="color: green;"><strong>Improvement:</strong> 8.31%</p>
+            <p><strong>Baseline RMSE:</strong> 35.772535551952295</p>
+            <p><strong>Best RMSE:</strong> 33.492823321561424</p>
+            <p style="color: green;"><strong>Improvement:</strong> 6.37%</p>
             <div class="plot-container">
                 <img src="Optuna/XGBoost/Plots/trial_progression.png" class="plot">
                 <img src="Optuna/XGBoost/Plots/hyperparameter_importance.png" class="plot">

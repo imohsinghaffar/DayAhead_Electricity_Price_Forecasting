@@ -15,9 +15,11 @@ class XGBoostModel:
     scales data for training, and provides Optuna tuning returning real-unit RMSE.
     """
 
-    def __init__(self, df: pd.DataFrame, target_col: str = "Price", feature_cols=None):
+    def __init__(self, df: pd.DataFrame, target_col: str = "Price", feature_cols=None, use_residuals=True, confidence_scaling: float = 1.0):
         self.df = df.copy()
         self.target_col = target_col
+        self.use_residuals = use_residuals
+        self.confidence_scaling = confidence_scaling
         # Defaults if not provided, excluding target from features
         self.feature_cols = feature_cols if feature_cols is not None else [c for c in df.columns if c != target_col]
 
@@ -49,7 +51,11 @@ class XGBoostModel:
 
         # 2. Function day-ahead target: y(t) = Price(t+24)
         # Shift -24: Row T gets value from T+24.
-        self.df["target_t_plus_24"] = self.df[self.target_col].shift(-24)
+        # If use_residuals: target = Price(t+24) - Price(t)
+        if self.use_residuals:
+            self.df["target_t_plus_24"] = self.df[self.target_col].shift(-24) - self.df[self.target_col]
+        else:
+            self.df["target_t_plus_24"] = self.df[self.target_col].shift(-24)
 
         # 3. Drop NaNs
         needed = list(self.feature_cols) + ["target_t_plus_24"]
@@ -85,23 +91,32 @@ class XGBoostModel:
 
         # Time-series aware validation split (last 10% of train set)
         split_point = int(len(X_full) * (1 - validation_split))
-        X_train, X_val = X_full[:split_point], X_full[split_point:]
-        y_train, y_val = y_full[:split_point], y_full[split_point:]
+        self.X_train, self.X_val = X_full[:split_point], X_full[split_point:]
+        self.y_train, self.y_val = y_full[:split_point], y_full[split_point:]
 
         self.model = xgb.XGBRegressor(**params)
         
         if verbose:
-            print(f"\n[XGBoost] Training with {len(X_train)} samples, Validating on {len(X_val)} samples.")
+            print(f"\n[XGBoost] Training with {len(self.X_train)} samples, Validating on {len(self.X_val)} samples.")
 
         self.model.fit(
-            X_train, y_train.ravel(),
-            eval_set=[(X_val, y_val.ravel())],
+            self.X_train, self.y_train.ravel(),
+            eval_set=[(self.X_val, self.y_val.ravel())],
             early_stopping_rounds=50,
             verbose=verbose
         )
         
+        # Calculate Validation Residuals for Probabilistic Intervals
+        # res = actual - predicted
+        val_preds = self.model.predict(self.X_val)
+        self.val_residuals = self.scaler_y.inverse_transform(self.y_val).ravel() - \
+                             self.scaler_y.inverse_transform(val_preds.reshape(-1, 1)).ravel()
+        
+        self.p05_offset = np.percentile(self.val_residuals, 5)
+        self.p95_offset = np.percentile(self.val_residuals, 95)
+        
         if verbose:
-            print("[XGBoost] Training completed.\n")
+            print(f"[XGBoost] Training complete. Val Residual P05: {self.p05_offset:.2f}, P95: {self.p95_offset:.2f}\n")
 
     def tune_hyperparameters(self, train_end_idx: int, n_trials: int = 20, baseline_params: dict | None = None):
         """Runs Optuna optimization and returns trial history for reporting."""
@@ -109,6 +124,7 @@ class XGBoostModel:
         y_tune = self.y_scaled[:train_end_idx]
         y_tune_real = self.scaler_y.inverse_transform(y_tune).ravel()
         
+        from sklearn.model_selection import TimeSeriesSplit
         tscv = TimeSeriesSplit(n_splits=3)
 
         # 1. Calculate Baseline Performance (if provided or using defaults)
@@ -146,9 +162,11 @@ class XGBoostModel:
             }
             return run_eval(params)
 
+        import optuna
         study = optuna.create_study(direction='minimize')
         study.optimize(objective, n_trials=n_trials)
         
+        best_params = study.best_params
         best_rmse = study.best_value
         improvement_rmse = baseline_rmse - best_rmse
         improvement_pct = (improvement_rmse / baseline_rmse * 100) if baseline_rmse != 0 else 0
@@ -158,7 +176,7 @@ class XGBoostModel:
             "study_metadata": {
                 "n_trials": n_trials,
                 "best_rmse": best_rmse,
-                "best_params": study.best_params,
+                "best_params": best_params,
                 "baseline_rmse": baseline_rmse,
                 "baseline_params": baseline_params,
                 "improvement": {
@@ -172,25 +190,44 @@ class XGBoostModel:
             ]
         }
         
-        return study.best_params, history
+        return best_params, history
 
-    def predict(self, start_date):
-        """Standard sequence prediction for test set."""
+    def predict(self, start_date, probabilistic=False):
+        """Sequence prediction for test set. Returns DataFrame if probabilistic."""
         if self.model is None: raise RuntimeError("Model NOT trained.")
         mask = self.valid_indices >= start_date
         if not mask.any(): return pd.Series(dtype=float)
         idx = np.argmax(mask)
         X_test = self.X_scaled[idx:]
-        preds = self.scaler_y.inverse_transform(self.model.predict(X_test).reshape(-1, 1)).ravel()
-        return pd.Series(preds, index=self.valid_indices[idx:])
+        indices = self.valid_indices[idx:]
+        
+        # Point Prediction
+        preds_raw = self.scaler_y.inverse_transform(self.model.predict(X_test).reshape(-1, 1)).ravel()
+        
+        if self.use_residuals:
+            base_prices = self.df.loc[indices, self.target_col].values
+            preds_final = preds_raw + base_prices
+        else:
+            preds_final = preds_raw
 
-    def predict_next_24h(self, latest_df: pd.DataFrame):
+        if not probabilistic:
+            return pd.Series(preds_final, index=indices)
+            
+        # Probabilistic: use pre-calculated offsets from validation set
+        res = pd.DataFrame(index=indices)
+        res['prediction'] = preds_final
+        res['P05'] = preds_final + (self.p05_offset * self.confidence_scaling)
+        res['P95'] = preds_final + (self.p95_offset * self.confidence_scaling)
+        res['uncertainty'] = (res['P95'] - res['P05']) / 4
+        
+        return res
+
+    def predict_next_24h(self, latest_df: pd.DataFrame, probabilistic=False):
         """
         Builds future features and predicts next 24 hours.
-        Ensures lags and calendar features exist.
+        Returns DataFrame if probabilistic.
         """
         data = latest_df.copy()
-        # Ensure lags exist in input if they were created during preprocess
         for lag in [24, 48, 168]:
             col = f"{self.target_col}_lag_{lag}"
             if col not in data.columns and col in self.feature_cols:
@@ -199,47 +236,35 @@ class XGBoostModel:
         last_date = data.index[-1]
         future_index = pd.date_range(start=last_date + pd.Timedelta(hours=1), periods=24, freq='h')
         
-        future_df = pd.DataFrame(index=future_index)
-        
-        # 1. Calendar Features (Sin/Cos) - Ensure names match exactly what was used in training
-        hour = future_df.index.hour
-        dow = future_df.index.dayofweek
-        month = future_df.index.month
-        
-        # Map to professor-mandated names if they were in feature_cols
-        name_map = {
-            'hour_of_the_day_sin': np.sin(2 * np.pi * hour / 24),
-            'hour_of_the_day_cos': np.cos(2 * np.pi * hour / 24),
-            'day_of_the_week_sin': np.sin(2 * np.pi * dow / 7),
-            'day_of_the_week_cos': np.cos(2 * np.pi * dow / 7),
-            'month_of_the_year_sin': np.sin(2 * np.pi * (month-1) / 12),
-            'month_of_the_year_cos': np.cos(2 * np.pi * (month-1) / 12)
-        }
-        
-        for k, v in name_map.items():
-            if k in self.feature_cols:
-                future_df[k] = v
-        
-        # 2. Fuel & Load (Ffill from latest)
-        for col in ['Oil_Price', 'Coal_Price', 'Gas_Price', 'Load_Week_Min_Forecast', 'Load_Week_Max_Forecast']:
-            if col in self.feature_cols:
-                future_df[col] = data[col].iloc[-1] if col in data.columns else 0
-        
-        # 3. Simple approach: Re-apply lag logic on a window
         feat_list = []
+        base_prices = []
         for target_time in future_index:
             feature_time = target_time - pd.Timedelta(hours=24)
             if feature_time in data.index:
                 row = data.loc[feature_time, self.feature_cols].copy()
                 feat_list.append(row)
+                base_prices.append(data.loc[feature_time, self.target_col])
             else:
-                # Fallback to ffill or zeros for features
                 feat_list.append(pd.Series(0, index=self.feature_cols))
+                base_prices.append(0)
         
         X_future = pd.concat(feat_list, axis=1).T.values
         X_future_scaled = self.scaler_X.transform(X_future)
         
-        preds_scaled = self.model.predict(X_future_scaled)
-        preds_real = self.scaler_y.inverse_transform(preds_scaled.reshape(-1, 1)).ravel()
+        preds_raw = self.scaler_y.inverse_transform(self.model.predict(X_future_scaled).reshape(-1, 1)).ravel()
         
-        return pd.Series(preds_real, index=future_index)
+        if self.use_residuals:
+            base = np.array(base_prices)
+            preds_final = preds_raw + base
+        else:
+            preds_final = preds_raw
+
+        if not probabilistic:
+            return pd.Series(preds_final, index=future_index)
+
+        res = pd.DataFrame(index=future_index)
+        res['prediction'] = preds_final
+        res['P05'] = preds_final + (self.p05_offset * self.confidence_scaling)
+        res['P95'] = preds_final + (self.p95_offset * self.confidence_scaling)
+        res['uncertainty'] = (res['P95'] - res['P05']) / 4
+        return res
