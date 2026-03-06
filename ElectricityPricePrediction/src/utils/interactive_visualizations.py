@@ -29,14 +29,31 @@ def create_interactive_forecast(predictions, output_dir):
     ))
     
     # Add all model predictions
-    exclude = ['Actual', 'LSTM_uncertainty', 'P05', 'P95', 'P50', 'Date']
+    exclude = ['Actual', 'LSTM_uncertainty', 'XGBoost_uncertainty', 'P05', 'P95', 'P50', 'LSTM_P05', 'LSTM_P95', 'XGBoost_P05', 'XGBoost_P95', 'Date']
     colors = px.colors.qualitative.Plotly
     for i, col in enumerate([c for c in data.columns if c not in exclude]):
+        # Model main line
         fig.add_trace(go.Scatter(
             x=data['Date'], y=data[col],
             name=col, line=dict(width=1.5),
             opacity=0.8
         ))
+        
+        # Uncertainty Bands (P05/P95)
+        p05_col = f"{col}_P05"
+        p95_col = f"{col}_P95"
+        if p05_col in data.columns and p95_col in data.columns:
+            # Lower bound (invisible, just for fill starting point)
+            fig.add_trace(go.Scatter(
+                x=data['Date'], y=data[p05_col],
+                line=dict(width=0), showlegend=False, hoverinfo='skip'
+            ))
+            # Upper bound (fills to lower bound)
+            fig.add_trace(go.Scatter(
+                x=data['Date'], y=data[p95_col],
+                fill='tonexty', fillcolor='rgba(130,130,130,0.15)',
+                line=dict(width=0), name=f"{col} 90% CI", hoverinfo='skip'
+            ))
     
     fig.update_layout(
         title='Interactive Forecast Comparison (Last 7 Days)',
@@ -60,7 +77,7 @@ def create_interactive_error_analysis(predictions, output_dir):
     
     fig = make_subplots(rows=2, cols=1, subplot_titles=['Error Distribution', 'MAE by Hour'])
     
-    exclude = ['Actual', 'LSTM_uncertainty', 'P05', 'P95', 'P50']
+    exclude = ['Actual', 'LSTM_uncertainty', 'XGBoost_uncertainty', 'P05', 'P95', 'P50', 'LSTM_P05', 'LSTM_P95', 'XGBoost_P05', 'XGBoost_P95']
     
     for col in [c for c in predictions.columns if c not in exclude]:
         errors = predictions[col] - predictions['Actual']

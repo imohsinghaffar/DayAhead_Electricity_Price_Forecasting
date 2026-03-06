@@ -53,7 +53,7 @@ class ReportGenerator:
             <h2>Model Metrics</h2>
             {metrics_df.to_html(classes='table', index=False)}
 
-            <h2>Forecast Analysis</h2>
+            <h2>Forecast Analysis (Deterministic)</h2>
             <div class="plot-container">
                 <div>
                     <h3>Forecasting</h3>
@@ -69,8 +69,33 @@ class ReportGenerator:
                 </div>
             </div>
             
+            <h2>Probabilistic Analysis</h2>
+            <div class="plot-container">
+                <div>
+                    <h3>Fan Chart</h3>
+                    <img src="Plots/Probabilistic/probabilistic_fan_chart.png" class="plot" style="max-width: 100%;">
+                </div>
+                <div>
+                    <h3>Reliability & Calibration</h3>
+                    <img src="Plots/Probabilistic/probabilistic_analysis.png" class="plot" style="max-width: 100%;">
+                </div>
+                <div>
+                    <h3>Spaghetti Scenarios</h3>
+                    <img src="Plots/Probabilistic/spaghetti_plot.png" class="plot" style="max-width: 100%;">
+                </div>
+                <div>
+                    <h3>Peak Hour Density</h3>
+                    <img src="Plots/Probabilistic/density_plot_peak_hour.png" class="plot" style="max-width: 100%;">
+                </div>
+                <div>
+                    <h3>Uncertainty Dynamics</h3>
+                    <img src="Plots/Probabilistic/uncertainty_dynamics.png" class="plot" style="max-width: 100%;">
+                </div>
+            </div>
+            
             <h2>Sequential Model Logs</h2>
             <p>Persistent logs for each model are saved in <code>Analysis/Model_History/&lt;ModelName&gt;/{self.metadata.get('run_number', 'N')}.json</code></p>
+            <p>Interactive HTML plots are available in <code>Analysis/Latest/Plots/Interactive/</code>.</p>
         """
         
         if optuna_history:
